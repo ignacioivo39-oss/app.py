@@ -7,26 +7,34 @@ st.set_page_config(page_title="PIOM Dashboard", layout="wide")
 
 st.title("🚀 PIOM - Plataforma de Inteligencia Operacional Minera")
 
-st.markdown("## 🔥 Índice de Riesgo PIOM")
+st.markdown("## 📂 Cargar Datos Operacionales (Excel)")
 
-# Simulación simple
-np.random.seed(42)
-riesgo = np.random.randint(40, 90)
+uploaded_file = st.file_uploader("Sube tu archivo Excel", type=["xlsx"])
 
-st.metric(label="IR PIOM", value=f"{riesgo}/100")
+if uploaded_file is not None:
+    
+    df = pd.read_excel(uploaded_file)
 
-if riesgo < 50:
-    st.success("Estado: Riesgo Bajo")
-elif riesgo < 70:
-    st.warning("Estado: Riesgo Medio")
-else:
-    st.error("Estado: Riesgo Alto")
+    st.write("### Vista previa de datos")
+    st.dataframe(df.head())
 
-# Gráfico simple
-data = pd.DataFrame({
-    "Hora": range(1, 13),
-    "Desviación (%)": np.random.normal(5, 2, 12)
-})
+    if "Plan" in df.columns and "Real" in df.columns:
+        
+        df["Desviacion_%"] = (df["Real"] - df["Plan"]) / df["Plan"] * 100
+        
+        riesgo = np.mean(abs(df["Desviacion_%"])) * 2
+        
+        st.metric("🔥 Índice PIOM", f"{round(riesgo,1)}/100")
 
-fig = px.line(data, x="Hora", y="Desviación (%)", title="Desviación Plan vs Real")
-st.plotly_chart(fig, use_container_width=True)
+        if riesgo < 20:
+            st.success("Estado: Riesgo Bajo")
+        elif riesgo < 40:
+            st.warning("Estado: Riesgo Medio")
+        else:
+            st.error("Estado: Riesgo Alto")
+
+        fig = px.line(df, y="Desviacion_%", title="Desviación Plan vs Real (%)")
+        st.plotly_chart(fig, use_container_width=True)
+
+    else:
+        st.warning("El Excel debe contener columnas llamadas 'Plan' y 'Real'")
