@@ -3,44 +3,51 @@ import pandas as pd
 import numpy as np
 import plotly.express as px
 
-st.set_page_config(page_title="PIOM Dashboard", layout="wide")
+st.set_page_config(page_title="PIOM - Inteligencia Operacional Minera", layout="wide")
 
-st.title("🚀 PIOM - Plataforma de Inteligencia Operacional Minera")
+st.title("⛏️ PIOM - Plataforma de Inteligencia Operacional Minera")
 
-st.write("Sube un archivo Excel con datos del turno para analizar desviaciones y detectar problemas.")
+st.write("Sube datos operacionales del turno para detectar desviaciones, problemas y recomendaciones.")
 
-# Subir archivo
-archivo = st.file_uploader("Cargar archivo Excel", type=["xlsx"])
+archivo = st.file_uploader("Subir archivo Excel", type=["xlsx"])
 
 if archivo is not None:
 
     df = pd.read_excel(archivo)
 
-    st.subheader("Vista de datos")
+    st.subheader("Vista de Datos Operacionales")
     st.dataframe(df)
 
-    # Verificar columnas necesarias
-    columnas = ["Plan", "Real", "Espera", "Mant_prog", "Mant_no_prog"]
+    columnas_necesarias = [
+        "Hora","Pala_activa","Camiones_activos","Plan","Real",
+        "Tiempo_carguio_min","Espera","Distancia_km","Mant_prog","Mant_no_prog"
+    ]
 
-    if all(col in df.columns for col in columnas):
+    if all(col in df.columns for col in columnas_necesarias):
 
-        # Desviación producción
+        # ------------------------
+        # Calcular desviación
+        # ------------------------
+
         df["Desviacion_%"] = (df["Real"] - df["Plan"]) / df["Plan"] * 100
 
-        desviacion = abs(df["Desviacion_%"]).mean()
-        espera = df["Espera"].mean()
-        mant_prog = df["Mant_prog"].sum()
-        mant_no_prog = df["Mant_no_prog"].sum()
+        desviacion_prom = abs(df["Desviacion_%"]).mean()
+        espera_prom = df["Espera"].mean()
+        mant_prog_total = df["Mant_prog"].sum()
+        mant_no_prog_total = df["Mant_no_prog"].sum()
 
+        # ------------------------
         # Índice PIOM
+        # ------------------------
+
         IR_PIOM = (
-            0.4 * desviacion +
-            0.3 * espera +
-            0.2 * mant_no_prog +
-            0.1 * mant_prog
+            0.4 * desviacion_prom +
+            0.3 * espera_prom +
+            0.2 * mant_no_prog_total +
+            0.1 * mant_prog_total
         )
 
-        st.subheader("Índice de Riesgo Operacional")
+        st.subheader("📊 Índice de Riesgo PIOM")
 
         st.metric("IR PIOM", round(IR_PIOM,1))
 
@@ -51,35 +58,81 @@ if archivo is not None:
         else:
             st.error("Riesgo Alto")
 
-        # Detectar problema principal
+        # ------------------------
+        # Detectar equipo con problema
+        # ------------------------
+
+        pala_produccion = df.groupby("Pala_activa")["Real"].sum()
+        pala_plan = df.groupby("Pala_activa")["Plan"].sum()
+
+        eficiencia_pala = (pala_produccion / pala_plan) * 100
+
+        pala_peor = eficiencia_pala.idxmin()
+
+        st.subheader("⚠️ Equipo con menor rendimiento")
+
+        st.write(f"La pala con menor eficiencia es: **{pala_peor}**")
+        st.write(f"Eficiencia: {round(eficiencia_pala.min(),1)} %")
+
+        # ------------------------
+        # Identificar causa principal
+        # ------------------------
+
         causas = {
-            "Tiempo de espera": espera,
-            "Mantención no programada": mant_no_prog,
-            "Mantención programada": mant_prog,
-            "Desviación producción": desviacion
+            "Tiempo de espera camiones": espera_prom,
+            "Mantención no programada": mant_no_prog_total,
+            "Mantención programada": mant_prog_total,
+            "Desviación producción": desviacion_prom
         }
 
         causa_principal = max(causas, key=causas.get)
 
-        st.subheader("Problema Detectado")
+        st.subheader("🔎 Problema Detectado")
+
         st.write(causa_principal)
 
-        # Recomendación
-        if causa_principal == "Tiempo de espera":
-            st.info("Recomendación: redistribuir camiones entre palas para reducir cola.")
+        # ------------------------
+        # Recomendaciones
+        # ------------------------
+
+        st.subheader("💡 Recomendación Operacional")
+
+        if causa_principal == "Tiempo de espera camiones":
+            st.info("Redistribuir camiones entre palas para reducir cola de espera.")
 
         elif causa_principal == "Mantención no programada":
-            st.info("Recomendación: revisar disponibilidad de equipos y activar reemplazo.")
+            st.info("Revisar disponibilidad de equipos y activar plan de mantenimiento correctivo.")
 
         elif causa_principal == "Mantención programada":
-            st.info("Recomendación: ajustar planificación del turno.")
+            st.info("Ajustar planificación del turno considerando paradas programadas.")
 
         else:
-            st.info("Recomendación: revisar estrategia de carguío.")
+            st.info("Revisar estrategia de carguío y asignación de flota.")
 
-        # Gráfico desviación
-        fig = px.line(df, y="Desviacion_%", title="Desviación Plan vs Real")
-        st.plotly_chart(fig)
+        # ------------------------
+        # GRÁFICOS
+        # ------------------------
+
+        st.subheader("📈 Desviación Plan vs Real")
+
+        fig1 = px.line(df, y="Desviacion_%", title="Desviación de Producción (%)")
+        st.plotly_chart(fig1, use_container_width=True)
+
+        st.subheader("🚚 Tiempo de Espera de Camiones")
+
+        fig2 = px.line(df, y="Espera", title="Tiempo de Espera")
+        st.plotly_chart(fig2, use_container_width=True)
+
+        st.subheader("⛏️ Producción por Pala")
+
+        fig3 = px.bar(
+            df.groupby("Pala_activa")["Real"].sum().reset_index(),
+            x="Pala_activa",
+            y="Real",
+            title="Producción por Equipo"
+        )
+
+        st.plotly_chart(fig3, use_container_width=True)
 
     else:
-        st.warning("El Excel debe tener columnas: Plan, Real, Espera, Mant_prog, Mant_no_prog")
+        st.error("El Excel no contiene las columnas necesarias.")
