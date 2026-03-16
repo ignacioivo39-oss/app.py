@@ -3,55 +3,83 @@ import pandas as pd
 import numpy as np
 import plotly.express as px
 
-# Configuración página
 st.set_page_config(page_title="PIOM Dashboard", layout="wide")
+
 st.title("🚀 PIOM - Plataforma de Inteligencia Operacional Minera")
-st.markdown("## 📂 Cargar Datos Operacionales (Excel)")
 
-# Carga de archivo
-uploaded_file = st.file_uploader("Sube tu archivo Excel", type=["xlsx"])
+st.write("Sube un archivo Excel con datos del turno para analizar desviaciones y detectar problemas.")
 
-if uploaded_file is not None:
-    df = pd.read_excel(uploaded_file)
-    
-    st.write("### Vista previa de datos")
-    st.dataframe(df.head())
+# Subir archivo
+archivo = st.file_uploader("Cargar archivo Excel", type=["xlsx"])
 
-    # Validación columnas
-    required_cols = ["Plan", "Real", "Turno"]
-    if all(col in df.columns for col in required_cols):
-        
-        # Cálculo de desviación
+if archivo is not None:
+
+    df = pd.read_excel(archivo)
+
+    st.subheader("Vista de datos")
+    st.dataframe(df)
+
+    # Verificar columnas necesarias
+    columnas = ["Plan", "Real", "Espera", "Mant_prog", "Mant_no_prog"]
+
+    if all(col in df.columns for col in columnas):
+
+        # Desviación producción
         df["Desviacion_%"] = (df["Real"] - df["Plan"]) / df["Plan"] * 100
-        
-        # Cálculo por turno
-        turno_summary = df.groupby("Turno")["Desviacion_%"].mean().reset_index()
-        turno_summary["Indice_PIOM"] = turno_summary["Desviacion_%"].abs() * 2
-        
-        # Índice PIOM global
-        riesgo_total = np.mean(abs(df["Desviacion_%"])) * 2
-        st.metric("🔥 Índice PIOM Total", f"{round(riesgo_total,1)}/100")
-        
-        # Alertas globales
-        if riesgo_total < 20:
-            st.success("Estado: Riesgo Bajo")
-        elif riesgo_total < 40:
-            st.warning("Estado: Riesgo Medio")
+
+        desviacion = abs(df["Desviacion_%"]).mean()
+        espera = df["Espera"].mean()
+        mant_prog = df["Mant_prog"].sum()
+        mant_no_prog = df["Mant_no_prog"].sum()
+
+        # Índice PIOM
+        IR_PIOM = (
+            0.4 * desviacion +
+            0.3 * espera +
+            0.2 * mant_no_prog +
+            0.1 * mant_prog
+        )
+
+        st.subheader("Índice de Riesgo Operacional")
+
+        st.metric("IR PIOM", round(IR_PIOM,1))
+
+        if IR_PIOM < 20:
+            st.success("Riesgo Bajo")
+        elif IR_PIOM < 40:
+            st.warning("Riesgo Medio")
         else:
-            st.error("Estado: Riesgo Alto")
-        
-        # Gráfico general
-        fig1 = px.line(df, x=df.index, y="Desviacion_%", title="Desviación Plan vs Real (%)")
-        st.plotly_chart(fig1, use_container_width=True)
-        
-        # Gráfico por turno
-        fig2 = px.bar(turno_summary, x="Turno", y="Indice_PIOM",
-                      title="Índice PIOM por Turno", text="Indice_PIOM")
-        st.plotly_chart(fig2, use_container_width=True)
-        
-        # Tabla resumen por turno
-        st.write("### Resumen por Turno")
-        st.dataframe(turno_summary)
-        
+            st.error("Riesgo Alto")
+
+        # Detectar problema principal
+        causas = {
+            "Tiempo de espera": espera,
+            "Mantención no programada": mant_no_prog,
+            "Mantención programada": mant_prog,
+            "Desviación producción": desviacion
+        }
+
+        causa_principal = max(causas, key=causas.get)
+
+        st.subheader("Problema Detectado")
+        st.write(causa_principal)
+
+        # Recomendación
+        if causa_principal == "Tiempo de espera":
+            st.info("Recomendación: redistribuir camiones entre palas para reducir cola.")
+
+        elif causa_principal == "Mantención no programada":
+            st.info("Recomendación: revisar disponibilidad de equipos y activar reemplazo.")
+
+        elif causa_principal == "Mantención programada":
+            st.info("Recomendación: ajustar planificación del turno.")
+
+        else:
+            st.info("Recomendación: revisar estrategia de carguío.")
+
+        # Gráfico desviación
+        fig = px.line(df, y="Desviacion_%", title="Desviación Plan vs Real")
+        st.plotly_chart(fig)
+
     else:
-        st.warning(f"El Excel debe contener las columnas: {', '.join(required_cols)}")
+        st.warning("El Excel debe tener columnas: Plan, Real, Espera, Mant_prog, Mant_no_prog")
