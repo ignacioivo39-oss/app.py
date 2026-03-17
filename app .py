@@ -153,3 +153,108 @@ if archivo:
     else:
 
         st.error("El Excel no tiene las columnas necesarias.")
+        import streamlit as st
+import pandas as pd
+import matplotlib.pyplot as plt
+
+st.title("PIOM - Plataforma Inteligente de Optimización Minera")
+
+uploaded_file = st.file_uploader("Subir archivo Excel del turno", type=["xlsx"])
+
+# -----------------------------
+# FUNCIONES PIOM
+# -----------------------------
+
+def calcular_indicadores(data):
+
+    ef_perforacion = data["metros_perforados"][0] / data["metros_planificados"][0]
+
+    ef_carguio = data["toneladas_cargadas"][0] / data["capacidad_pala_turno"][0]
+
+    ef_transporte = data["toneladas_transportadas"][0] / data["capacidad_transporte_turno"][0]
+
+    disponibilidad = data["horas_operativas"][0] / data["horas_programadas"][0]
+
+    flota = data["camiones_disponibles"][0] / data["camiones_totales"][0]
+
+    indicadores = {
+        "Perforación": ef_perforacion,
+        "Carguío": ef_carguio,
+        "Transporte": ef_transporte,
+        "Disponibilidad equipos": disponibilidad,
+        "Disponibilidad camiones": flota
+    }
+
+    return indicadores
+
+
+def detectar_cuello_botella(indicadores):
+
+    cuello = min(indicadores, key=indicadores.get)
+
+    return cuello
+
+
+def generar_recomendacion(cuello):
+
+    if cuello == "Transporte":
+        return "Aumentar camiones o reducir tiempo de ciclo."
+
+    elif cuello == "Carguío":
+        return "Revisar eficiencia pala o tiempos de carguío."
+
+    elif cuello == "Perforación":
+        return "Revisar rendimiento de perforadora."
+
+    elif cuello == "Disponibilidad equipos":
+        return "Revisar mantenciones programadas y no programadas."
+
+    else:
+        return "Optimizar gestión de flota."
+
+# -----------------------------
+# APP PRINCIPAL
+# -----------------------------
+
+if uploaded_file is not None:
+
+    data = pd.read_excel(uploaded_file)
+
+    st.subheader("Datos del turno")
+    st.dataframe(data)
+
+    indicadores = calcular_indicadores(data)
+
+    st.subheader("Indicadores de eficiencia")
+
+    for k,v in indicadores.items():
+
+        st.write(f"{k}: {round(v*100,2)} %")
+
+    cuello = detectar_cuello_botella(indicadores)
+
+    st.subheader("Cuello de botella del sistema")
+
+    st.error(cuello)
+
+    recomendacion = generar_recomendacion(cuello)
+
+    st.subheader("Recomendación PIOM")
+
+    st.success(recomendacion)
+
+    # -----------------------------
+    # GRAFICO
+    # -----------------------------
+
+    nombres = list(indicadores.keys())
+    valores = [v*100 for v in indicadores.values()]
+
+    fig, ax = plt.subplots()
+
+    ax.bar(nombres,valores)
+
+    ax.set_ylabel("Eficiencia (%)")
+    ax.set_title("Indicadores operacionales turno")
+
+    st.pyplot(fig)
