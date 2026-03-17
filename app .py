@@ -421,3 +421,31 @@ Recomendación:
 """
 
 st.text_area("Reporte listo para enviar", reporte, height=200)
+# --------------------------------
+# ESTADO SISTEMA MINA
+# --------------------------------
+
+st.subheader("📡 Estado del Sistema Mina")
+
+estado = "🟢 Operación Normal"
+
+if indicadores["Producción"] < 85:
+    estado = "🔴 Baja Producción"
+
+elif indicadores["Espera Camiones"] > 5:
+    estado = "🟡 Congestión Transporte"
+
+elif indicadores["Perforación"] < 90:
+    estado = "🟡 Baja Perforación"
+
+st.markdown(f"### {estado}")
+estado = "🟢 Operación Normal"
+
+if indicadores["Producción"] < 85 and indicadores["Espera Camiones"] > 5:
+    estado = "🔴 Sistema Saturado"
+
+elif indicadores["Producción"] < 90:
+    estado = "🟡 Riesgo Productivo"
+
+elif indicadores["Espera Camiones"] > 4:
+    estado = "🟡 Congestión en Transporte"
