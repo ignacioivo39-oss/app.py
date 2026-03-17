@@ -209,3 +209,76 @@ if archivo:
 else:
 
     st.info("Sube el archivo Excel del turno para iniciar el análisis.")
+# -----------------------------
+# SIMULADOR SISTEMA MINA
+# -----------------------------
+
+st.subheader("🧠 Simulación Sistema Mina")
+
+camiones = st.slider("Número de camiones",1,20,8)
+
+capacidad_camion = st.number_input("Capacidad camión (ton)",200)
+
+tiempo_carguio = st.number_input("Tiempo carguío (min)",3)
+
+viaje_cargado = st.number_input("Viaje cargado (min)",10)
+
+descarga = st.number_input("Tiempo descarga (min)",2)
+
+viaje_vacio = st.number_input("Viaje vacío (min)",8)
+
+espera = st.number_input("Espera promedio (min)",2)
+
+horas_turno = 12
+
+tiempo_ciclo = tiempo_carguio + viaje_cargado + descarga + viaje_vacio + espera
+
+produccion_turno = (camiones * capacidad_camion * horas_turno * 60) / tiempo_ciclo
+
+st.metric("Producción estimada turno (ton)", int(produccion_turno))
+# -----------------------------
+# OPTIMIZADOR DE FLOTA
+# -----------------------------
+
+st.subheader("🚚 Optimización de Flota")
+
+resultados = []
+
+for n in range(1,25):
+
+    prod = (n * capacidad_camion * horas_turno * 60) / tiempo_ciclo
+
+    resultados.append(prod)
+
+sim = pd.DataFrame({
+    "Camiones": range(1,25),
+    "Produccion": resultados
+})
+
+fig = px.line(sim, x="Camiones", y="Produccion",
+              title="Producción vs Número de Camiones")
+
+st.plotly_chart(fig,use_container_width=True)
+# -----------------------------
+# OPTIMIZADOR DE FLOTA
+# -----------------------------
+
+st.subheader("🚚 Optimización de Flota")
+
+resultados = []
+
+for n in range(1,25):
+
+    prod = (n * capacidad_camion * horas_turno * 60) / tiempo_ciclo
+
+    resultados.append(prod)
+
+sim = pd.DataFrame({
+    "Camiones": range(1,25),
+    "Produccion": resultados
+})
+
+fig = px.line(sim, x="Camiones", y="Produccion",
+              title="Producción vs Número de Camiones")
+
+st.plotly_chart(fig,use_container_width=True)
