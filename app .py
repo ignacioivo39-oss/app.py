@@ -3,7 +3,11 @@ import pandas as pd
 import plotly.express as px
 import os
 import numpy as np
-from sklearn.linear_model import LinearRegression
+try:
+    from sklearn.ensemble import RandomForestRegressor
+    rf_ok = True
+except:
+    rf_ok = False
 
 # --------------------------------
 # CONFIG
@@ -278,24 +282,27 @@ st.warning(f"Problema raíz detectado: {causa}")
 # --------------------------------
 # IA POR EQUIPO
 # --------------------------------
+st.subheader("Pala")
 
-st.subheader("Equipo (Análisis Avanzado)")
+if rf_ok and "pala_activa" in df.columns:
 
-# ---- PALAS ----
-if "pala_activa" in df.columns:
+    data = df[["pala_activa","plan","espera","real"]]
 
-    pala = df.groupby("pala_activa")[["real","plan"]].sum()
-    pala["eficiencia"] = (pala["real"] / pala["plan"]) * 100
+    data = pd.get_dummies(data, columns=["pala_activa"])
 
-    peor_pala = pala["eficiencia"].idxmin()
-    mejor_pala = pala["eficiencia"].idxmax()
+    X = data.drop("real", axis=1)
+    y = data["real"]
 
-    st.write(f"🔻 Peor pala: **{peor_pala}** ({round(pala.loc[peor_pala,'eficiencia'],1)}%)")
-    st.write(f"🔺 Mejor pala: **{mejor_pala}** ({round(pala.loc[mejor_pala,'eficiencia'],1)}%)")
+    modelo = RandomForestRegressor()
+    modelo.fit(X, y)
 
-    if pala.loc[peor_pala,"eficiencia"] < 85:
-        st.error(f"Pala crítica detectada: {peor_pala}")
-        st.info("Acción: redistribuir camiones o revisar operador")
+    pred = modelo.predict(X)
+
+    st.metric("Predicción IA promedio", int(pred.mean()))
+
+else:
+    st.warning("IA avanzada no disponible (falta scikit-learn)")
+
 
 # ---- PERFORADORAS ----
 if "equipo_perforacion" in df.columns:
