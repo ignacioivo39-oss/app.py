@@ -449,9 +449,11 @@ def generar_pdf(ind, problemas, perdida, precio, ranking, colas):
     doc.build(contenido)
 
     return "/mnt/data/reporte_PIOM.pdf"
-    if st.button("📄 Generar Reporte PDF"):
+)
+if st.button("📄 Generar Reporte PDF"):
 
-    ruta = generar_pdf(ind, problemas, perdida, precio, ranking, colas)
+    with st.spinner("Generando reporte..."):
+        ruta = generar_pdf(ind, problemas, perdida, precio, ranking, colas)
 
     with open(ruta, "rb") as f:
         st.download_button(
