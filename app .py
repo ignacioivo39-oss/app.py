@@ -1,208 +1,257 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
+import numpy as np
+
+st.set_page_config(page_title="PIOM ENTERPRISE", layout="wide")
+
+st.title("⛏️ PIOM ENTERPRISE - Sistema Inteligente de Operación Minera")
+st.markdown("### Control • Predicción • Optimización • Decisión")
+
+archivo = st.file_uploader("Cargar datos operacionales", type=["xlsx"])
 
 # --------------------------------
-# CONFIGURACIÓN
-# --------------------------------
-
-st.set_page_config(
-    page_title="PIOM PRO",
-    layout="wide"
-)
-
-st.title("⛏️ PIOM PRO - Sala de Control Minera")
-st.write("Optimización operacional y despacho inteligente")
-
-archivo = st.file_uploader("Subir archivo Excel", type=["xlsx"])
-
-# --------------------------------
-# FUNCIONES
+# FUNCIONES CORE
 # --------------------------------
 
 @st.cache_data
-def cargar_excel(file):
+def cargar(file):
     df = pd.read_excel(file)
     df = df.fillna(0)
     return df
 
-def calcular_indicadores(df):
-
-    perf = (df["Metros_real"].sum() / df["Metros_plan"].sum() * 100) if df["Metros_plan"].sum() > 0 else 0
-    prod = (df["Real"].sum() / df["Plan"].sum() * 100) if df["Plan"].sum() > 0 else 0
-    espera = df["Espera"].mean()
-    mant = df["Mant_no_prog"].sum()
-
+def indicadores(df):
     return {
-        "Perforación": perf,
-        "Producción": prod,
-        "Espera": espera,
-        "Mant": mant
+        "prod": df["Real"].sum() / df["Plan"].sum() * 100,
+        "perf": df["Metros_real"].sum() / df["Metros_plan"].sum() * 100,
+        "espera": df["Espera"].mean(),
+        "mant": df["Mant_no_prog"].sum()
     }
 
-def estado_mina(ind):
+def diagnostico(ind):
+    problemas = []
 
-    if ind["Producción"] < 85:
-        return "🔴 Riesgo Producción"
-    elif ind["Espera"] > 5:
-        return "🟡 Congestión Transporte"
-    elif ind["Perforación"] < 90:
-        return "🟡 Baja Perforación"
-    return "🟢 Operación Normal"
+    if ind["prod"] < 90:
+        problemas.append("Baja producción")
 
-def detectar_cuello(ind):
+    if ind["espera"] > 5:
+        problemas.append("Congestión flota")
 
-    problema = {
-        "Perforación": 100 - ind["Perforación"],
-        "Carguío": 100 - ind["Producción"],
-        "Transporte": ind["Espera"],
-        "Mantención": ind["Mant"]
-    }
+    if ind["perf"] < 85:
+        problemas.append("Baja perforación")
 
-    return max(problema, key=problema.get)
+    if ind["mant"] > 20:
+        problemas.append("Fallas equipos")
+
+    return problemas
+
+def motor_dispatch(df):
+
+    colas = df.groupby("Pala_activa")["Espera"].mean()
+    prod = df.groupby("Pala_activa")["Real"].sum()
+
+    max_prod = prod.max()
+
+    def score(p):
+        return colas[p]*0.6 + (1 - prod[p]/max_prod)*20
+
+    palas = list(colas.index)
+    ranking = sorted(palas, key=score)
+
+    return ranking, colas, prod
 
 # --------------------------------
-# APP PRINCIPAL
+# APP
 # --------------------------------
 
 if not archivo:
-    st.info("Sube un archivo Excel para comenzar")
+    st.warning("Cargar archivo")
     st.stop()
 
-df = cargar_excel(archivo)
-
-columnas = ["Metros_real","Metros_plan","Real","Plan","Espera","Mant_no_prog","Pala_activa"]
-
-faltantes = [c for c in columnas if c not in df.columns]
-
-if faltantes:
-    st.error(f"Faltan columnas: {faltantes}")
-    st.stop()
-
-indicadores = calcular_indicadores(df)
+df = cargar(archivo)
+ind = indicadores(df)
 
 # --------------------------------
-# KPI
+# SALA DE CONTROL
 # --------------------------------
 
-st.subheader("🎛️ KPIs Operacionales")
+st.subheader("🎛️ Sala de Control")
 
-c1, c2, c3 = st.columns(3)
+c1, c2, c3, c4 = st.columns(4)
 
-c1.metric("Perforación %", round(indicadores["Perforación"],1))
-c2.metric("Producción %", round(indicadores["Producción"],1))
-c3.metric("Espera (min)", round(indicadores["Espera"],1))
-
-# --------------------------------
-# ESTADO Y CUELLO
-# --------------------------------
-
-st.subheader("📡 Estado del Sistema")
-st.markdown(f"### {estado_mina(indicadores)}")
-
-cuello = detectar_cuello(indicadores)
-
-st.subheader("🚨 Cuello de Botella")
-st.error(cuello)
+c1.metric("Producción %", round(ind["prod"],1))
+c2.metric("Perforación %", round(ind["perf"],1))
+c3.metric("Espera", round(ind["espera"],1))
+c4.metric("Fallas", ind["mant"])
 
 # --------------------------------
-# GRÁFICOS
+# ESTADO GLOBAL
 # --------------------------------
 
-st.subheader("📊 Producción")
+st.subheader("📡 Estado Operacional")
 
-st.plotly_chart(
-    px.line(df, y=["Plan","Real"], markers=True),
-    use_container_width=True
-)
-
-st.subheader("🚚 Espera Camiones")
-
-st.plotly_chart(
-    px.line(df, y="Espera", markers=True),
-    use_container_width=True
-)
+if ind["prod"] < 85:
+    st.error("🔴 Sistema crítico")
+elif ind["espera"] > 5:
+    st.warning("🟡 Sistema congestionado")
+else:
+    st.success("🟢 Sistema estable")
 
 # --------------------------------
-# SIMULADOR
+# DIAGNÓSTICO
 # --------------------------------
 
-st.subheader("🧠 Simulación Sistema Mina")
+st.subheader("🧠 Diagnóstico Inteligente")
 
-camiones = st.slider("Camiones",1,20,8)
-capacidad = st.number_input("Capacidad (ton)",200)
-tiempo_ciclo = st.number_input("Tiempo ciclo (min)",25)
+problemas = diagnostico(ind)
 
-if tiempo_ciclo > 0:
-    prod = (camiones * capacidad * 12 * 60) / tiempo_ciclo
-    st.metric("Producción estimada", int(prod))
+for p in problemas:
+    st.warning(p)
+
+if not problemas:
+    st.success("Operación balanceada")
 
 # --------------------------------
-# IA DESPACHO (MEJORADA)
+# IMPACTO ECONÓMICO
 # --------------------------------
 
-st.subheader("🤖 IA Despacho Inteligente")
+st.subheader("💰 Impacto Económico")
 
-colas = df.groupby("Pala_activa")["Espera"].mean()
-produccion = df.groupby("Pala_activa")["Real"].sum()
+precio = st.number_input("Precio tonelada", 100)
 
-max_prod = produccion.max()
+perdida = df["Plan"].sum() - df["Real"].sum()
 
-def score(p):
-    return (
-        colas[p] * 0.5 +
-        (1 - produccion[p]/max_prod) * 20
-    )
+st.metric("Pérdida $", int(perdida * precio))
 
-palas = list(colas.index)
+# --------------------------------
+# MOTOR DISPATCH
+# --------------------------------
 
-ranking = sorted(palas, key=score)
+ranking, colas, prod = motor_dispatch(df)
+
+st.subheader("🚚 Motor de Despacho Inteligente")
 
 mejor = ranking[0]
-segunda = ranking[1] if len(ranking) > 1 else ranking[0]
-
-# ---------------- GLOBAL ----------------
-
-st.subheader("📡 Decisión Global")
+segunda = ranking[1] if len(ranking)>1 else ranking[0]
 
 col1, col2 = st.columns(2)
 
 col1.success(f"Enviar camiones a: {mejor}")
-col2.info(f"Asignación automática: enviar próximo camión a {segunda}")
+col2.info(f"Próxima asignación: {segunda}")
 
-# ---------------- POR EQUIPO ----------------
+# --------------------------------
+# DECISIÓN POR EQUIPO
+# --------------------------------
 
 st.subheader("🏗️ Decisión por Equipo")
 
-for pala in palas:
-
-    st.markdown(f"### {pala}")
+for pala in ranking:
 
     col1, col2 = st.columns(2)
 
-    col1.success(f"Enviar camiones a: {mejor}")
-    col2.info(f"Asignación automática: enviar próximo camión a {segunda}")
+    col1.success(f"{pala} → Prioridad")
+    col2.info(f"{pala} → Flujo recomendado")
 
 # --------------------------------
-# RANKING
+# SIMULADOR DESPACHO
 # --------------------------------
 
-st.subheader("🏆 Ranking Palas")
+st.subheader("🚚 Simulación Dispatch")
 
-ranking_df = df.groupby("Pala_activa")[["Real","Plan"]].sum()
-ranking_df["Eficiencia"] = (ranking_df["Real"]/ranking_df["Plan"])*100
+n = st.slider("Camiones", 1, 30, 10)
 
-st.dataframe(ranking_df.sort_values("Eficiencia", ascending=False))
+colas_sim = colas.copy()
+prod_sim = prod.copy()
+
+asignaciones = []
+
+for i in range(n):
+    mejor = min(colas_sim.index, key=lambda p: colas_sim[p])
+    asignaciones.append(mejor)
+    colas_sim[mejor] += 0.7
+
+st.dataframe(pd.DataFrame({
+    "Camión": range(1,n+1),
+    "Destino": asignaciones
+}))
 
 # --------------------------------
-# PÉRDIDAS
+# VISUAL
 # --------------------------------
 
-st.subheader("📉 Pérdida Producción")
+st.subheader("📊 Balance Sistema")
 
-perdida = df["Plan"].sum() - df["Real"].sum()
+balance = pd.DataFrame({
+    "Proceso": ["Perforación","Producción","Transporte"],
+    "Valor": [ind["perf"], ind["prod"], 100 - ind["espera"]*10]
+})
 
-if perdida > 0:
-    st.error(f"Pérdida: {int(perdida)} ton")
-else:
-    st.success("Producción cumplida")
+st.plotly_chart(px.bar(balance, x="Proceso", y="Valor", color="Valor"),
+                use_container_width=True)
+import time
+import random
+
+# --------------------------------
+# SIMULACIÓN TIEMPO REAL
+# --------------------------------
+
+st.subheader("🚨 Simulación Operacional en Tiempo Real")
+
+if "Pala_activa" in df.columns:
+
+    # estado inicial
+    palas = list(df["Pala_activa"].unique())
+
+    colas = {p: random.uniform(1,4) for p in palas}
+    produccion = {p: random.randint(1000,3000) for p in palas}
+
+    # control
+    iniciar = st.button("▶️ Iniciar Simulación")
+    detener = st.button("⛔ Detener")
+
+    placeholder = st.empty()
+
+    if iniciar:
+
+        for ciclo in range(50):  # ciclos simulados
+
+            if detener:
+                break
+
+            # lógica IA (decisión)
+            def score(p):
+                return colas[p]*0.6 + (1 - produccion[p]/max(produccion.values()))*20
+
+            mejor_pala = min(palas, key=score)
+
+            # simular llegada camión
+            colas[mejor_pala] += random.uniform(0.3,1)
+
+            # simular salida (descarga)
+            salida = random.choice(palas)
+
+            if colas[salida] > 0:
+                colas[salida] -= random.uniform(0.2,0.8)
+                produccion[salida] += random.randint(150,250)
+
+            # mostrar estado
+            with placeholder.container():
+
+                st.markdown(f"### ⏱️ Ciclo {ciclo+1}")
+
+                col1, col2 = st.columns(2)
+
+                col1.success(f"🚚 Enviar camión a: {mejor_pala}")
+                col2.info(f"📊 Producción total: {sum(produccion.values())}")
+
+                st.write("### 📊 Estado Palas")
+
+                estado_df = pd.DataFrame({
+                    "Pala": palas,
+                    "Cola": [round(colas[p],2) for p in palas],
+                    "Producción": [produccion[p] for p in palas]
+                })
+
+                st.dataframe(estado_df)
+
+            time.sleep(1)
