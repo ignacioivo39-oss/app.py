@@ -322,43 +322,31 @@ if "Pala_activa" in df.columns:
 
     st.bar_chart(distribucion)
 # --------------------------------
-# IA AVANZADA PIOM (NIVEL IMPACTO)
+# IA OPERACIONAL AVANZADA (ROBUSTA)
 # --------------------------------
 
 st.subheader("🧠 IA Operacional Avanzada")
 
-if all(col in df.columns for col in ["Pala_activa","Espera","tiempo_ciclo","Real"]):
+columnas_requeridas = ["Pala_activa","Espera","Real"]
+
+faltantes = [c for c in columnas_requeridas if c not in df.columns]
+
+if faltantes:
+    st.error(f"Faltan columnas para IA: {faltantes}")
+else:
 
     colas = df.groupby("Pala_activa")["Espera"].mean().to_dict()
-    ciclos = df.groupby("Pala_activa")["tiempo_ciclo"].mean().to_dict()
     produccion = df.groupby("Pala_activa")["Real"].sum().to_dict()
+
+    # si no existe tiempo_ciclo, lo estimamos
+    if "tiempo_ciclo" in df.columns:
+        ciclos = df.groupby("Pala_activa")["tiempo_ciclo"].mean().to_dict()
+    else:
+        ciclos = {p: 20 for p in colas.keys()}  # valor estimado
 
     palas = list(colas.keys())
     max_prod = max(produccion.values())
 
-    def analizar_pala(p):
-
-        espera = colas[p]
-        ciclo = ciclos[p]
-        prod = produccion[p]
-
-        problemas = []
-
-        if espera > 5:
-            problemas.append("alta congestión")
-
-        if ciclo > 25:
-            problemas.append("ciclo lento")
-
-        if prod < max_prod * 0.7:
-            problemas.append("baja producción")
-
-        return problemas
-
-    # evaluar todas
-    analisis = {p: analizar_pala(p) for p in palas}
-
-    # función costo real
     def costo(p):
         return (
             ciclos[p]*0.4 +
@@ -370,6 +358,9 @@ if all(col in df.columns for col in ["Pala_activa","Espera","tiempo_ciclo","Real
 
     mejor = ranking[0]
     segunda = ranking[1] if len(ranking) > 1 else mejor
+
+    st.success(f"Enviar camiones a: {mejor}")
+    st.info(f"Asignación automática: enviar próximo camión a {segunda}")
 
     # ---------------- RESULTADO ----------------
 
