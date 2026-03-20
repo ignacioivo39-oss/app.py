@@ -194,93 +194,75 @@ with col1:
 with col2:
     st.plotly_chart(px.bar(df, y="espera", title="Espera Camiones"), use_container_width=True)
 
-# ---------------- DISPATCH ----------------
+# ---------------- IA DESPACHO AVANZADO ----------------
 
-st.subheader("🚚 Control de Flota")
-
-if "pala_activa" in df.columns:
-
-    colas = df.groupby("pala_activa")["espera"].mean()
-    mejor = colas.idxmin()
-
-    st.success(f"Enviar camiones a: {mejor}")
-    st.dataframe(colas)
-    # --------------------------------
-# IA DESPACHO AUTOMÁTICO
-# --------------------------------
-
-st.subheader("🤖 IA Despacho Automático")
+st.subheader("🤖 IA Despacho Inteligente")
 
 if "pala_activa" in df.columns and "espera" in df.columns:
 
-    # estado actual del sistema
+    # estado del sistema
     colas = df.groupby("pala_activa")["espera"].mean()
     produccion = df.groupby("pala_activa")["real"].sum()
 
-    # función de decisión inteligente
+    max_prod = produccion.max()
+
+    # función mejorada
     def score_pala(p):
-        return colas[p] * 0.6 - produccion[p] * 0.0005
+        return (
+            colas[p] * 0.5 +                     # congestión
+            (1 - produccion[p]/max_prod) * 20    # baja producción
+        )
 
-    # elegir mejor pala
-    mejor_pala = min(colas.index, key=score_pala)
+    # ranking completo
+    ranking = sorted(colas.index, key=score_pala)
 
-    st.success(f"Asignación automática: enviar próximo camión a {mejor_pala}")
+    mejor_pala = ranking[0]
+    segunda_pala = ranking[1] if len(ranking) > 1 else ranking[0]
 
-    # mostrar evaluación
+    # ---------------- MENSAJES PROFESIONALES ----------------
+
+    st.subheader("📡 Recomendación Operacional")
+
+    st.success(f"Enviar camiones a: {mejor_pala}")
+    st.info(f"Asignación automática: enviar próximo camión a {segunda_pala}")
+
+    # tabla análisis
     decision_df = pd.DataFrame({
         "Pala": colas.index,
         "Cola": colas.values,
         "Producción": produccion.values,
         "Score": [score_pala(p) for p in colas.index]
-    })
+    }).sort_values("Score")
 
     st.dataframe(decision_df)
-st.subheader("🚚 Simulación Decisiones Automáticas")
 
-n_camiones = st.slider("Simular camiones", 1, 20, 5)
 
-asignaciones = []
+# ---------------- IA DESPACHO MASIVO ----------------
 
-for i in range(n_camiones):
-    mejor_pala = min(colas.index, key=score_pala)
-    asignaciones.append(mejor_pala)
-    colas[mejor_pala] += 0.5  # simula llegada
-st.subheader("🚚 Asignaciones Automáticas")
-st.write("Asignaciones generadas por IA:")
-st.write(asignaciones)
-def score_pala(p):
-    return (
-        colas[p] * 0.5 +
-        (100 - produccion[p] / max(produccion)) * 50
-    )
-    st.subheader("🚚 IA Despacho Masivo (Nivel Pro)")
+st.subheader("🚚 IA Despacho Masivo")
 
 n_camiones = st.slider("Cantidad de camiones a asignar", 1, 50, 10)
 
 if "pala_activa" in df.columns:
 
-    colas = df.groupby("pala_activa")["espera"].mean().to_dict()
-    produccion = df.groupby("pala_activa")["real"].sum().to_dict()
+    colas_dict = df.groupby("pala_activa")["espera"].mean().to_dict()
+    prod_dict = df.groupby("pala_activa")["real"].sum().to_dict()
 
-    # normalización
-    max_prod = max(produccion.values())
+    max_prod = max(prod_dict.values())
 
     def score(p):
-        return colas[p]*0.6 + (1 - produccion[p]/max_prod)*10
+        return colas_dict[p]*0.5 + (1 - prod_dict[p]/max_prod)*20
 
     asignaciones = []
 
     for i in range(n_camiones):
-
-        mejor = min(colas, key=score)
-
+        mejor = min(colas_dict, key=score)
         asignaciones.append(mejor)
 
-        # simular impacto en sistema
-        colas[mejor] += 0.8
-        produccion[mejor] += 200
+        # impacto dinámico
+        colas_dict[mejor] += 0.8
+        prod_dict[mejor] += 200
 
-    # resultado
     resultado = pd.DataFrame({
         "Camión": [f"CA-{i+1}" for i in range(n_camiones)],
         "Pala Asignada": asignaciones
@@ -288,25 +270,6 @@ if "pala_activa" in df.columns:
 
     st.dataframe(resultado)
 
-    # resumen
-    resumen = pd.Series(asignaciones).value_counts()
-
+    # resumen visual
     st.subheader("📊 Distribución de Flota")
-    st.bar_chart(resumen)
-# ---------------- BALANCE ----------------
-
-st.subheader("⚖️ Balance Sistema")
-
-balance_df = pd.DataFrame({
-    "Proceso": ["Perforación","Carguío","Transporte"],
-    "Valor": [
-        indicadores["Perforación"],
-        indicadores["Producción"],
-        100 - indicadores["Espera"] * 10
-    ]
-})
-
-st.plotly_chart(
-    px.bar(balance_df, x="Proceso", y="Valor", color="Valor"),
-    use_container_width=True
-)
+    st.bar_chart(pd.Series(asignaciones).value_counts())
