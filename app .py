@@ -293,11 +293,6 @@ if "pala_activa" in df.columns:
 
     st.subheader("📊 Distribución de Flota")
     st.bar_chart(resumen)
- def score(p):
-    return (
-        colas[p]*0.5 +                  # congestión
-        (1 - produccion[p]/max_prod)*20 # falta de producción
-    )
 # ---------------- BALANCE ----------------
 
 st.subheader("⚖️ Balance Sistema")
