@@ -342,3 +342,82 @@ if perdida > 0:
 else:
 
     st.success("Producción cumplida o superada")
+# --------------------------------
+# MOTOR INTELIGENTE PIOM
+# --------------------------------
+
+st.subheader("🧠 Inteligencia Operacional PIOM")
+
+def analisis_inteligente(df):
+
+    alertas = []
+
+    # Producción
+    prod_real = df["Real"].sum()
+    prod_plan = df["Plan"].sum()
+
+    if prod_real < prod_plan * 0.9:
+        alertas.append("🔴 Baja producción general")
+
+    # Esperas
+    if df["Espera"].mean() > 5:
+        alertas.append("🟡 Alta congestión de camiones")
+
+    # Perforación
+    perf = df["Metros_real"].sum() / df["Metros_plan"].sum() * 100
+
+    if perf < 85:
+        alertas.append("🟡 Baja eficiencia de perforación")
+
+    # Mantención
+    if df["Mant_no_prog"].sum() > 20:
+        alertas.append("🔴 Exceso de fallas no programadas")
+
+    return alertas
+
+
+alertas = analisis_inteligente(df)
+
+if alertas:
+    for alerta in alertas:
+        st.warning(alerta)
+else:
+    st.success("Operación estable")
+    # --------------------------------
+# ANALISIS POR HORA
+# --------------------------------
+
+if "Hora" in df.columns:
+
+    st.subheader("⏱️ Análisis por Hora")
+
+    prod_hora = df.groupby("Hora")["Real"].sum().reset_index()
+
+    fig_hora = px.line(prod_hora, x="Hora", y="Real", markers=True)
+
+    st.plotly_chart(fig_hora, use_container_width=True, key="prod_hora")
+# --------------------------------
+# REPORTE AUTOMATICO
+# --------------------------------
+
+st.subheader("📄 Reporte Ejecutivo")
+
+prod_real = df["Real"].sum()
+prod_plan = df["Plan"].sum()
+
+cumplimiento = (prod_real / prod_plan) * 100
+
+reporte = f"""
+Turno Mina:
+
+Producción Real: {int(prod_real)} ton
+Producción Plan: {int(prod_plan)} ton
+Cumplimiento: {round(cumplimiento,1)} %
+
+Cuello de botella: {cuello}
+
+Recomendación:
+{recomendacion}
+"""
+
+st.text_area("Reporte listo para enviar", reporte, height=200)
