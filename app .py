@@ -2,16 +2,18 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import numpy as np
+import time
+import random
 
 st.set_page_config(page_title="PIOM ENTERPRISE", layout="wide")
 
-st.title("PIOM  - Sistema Inteligente de Operación Minera")
+st.title("PIOM - Sistema Inteligente de Operación Minera")
 st.markdown("### Control • Predicción • Optimización • Decisión")
 
 archivo = st.file_uploader("Cargar datos operacionales", type=["xlsx"])
 
 # --------------------------------
-# FUNCIONES CORE
+# FUNCIONES BASE
 # --------------------------------
 
 @st.cache_data
@@ -33,20 +35,40 @@ def diagnostico(ind):
 
     if ind["prod"] < 90:
         problemas.append("Baja producción")
-
     if ind["espera"] > 5:
         problemas.append("Congestión flota")
-
     if ind["perf"] < 85:
         problemas.append("Baja perforación")
-
     if ind["mant"] > 20:
         problemas.append("Fallas equipos")
 
     return problemas
 
-def motor_dispatch(df):
+# --------------------------------
+# FUNCIONES NUEVAS PRO
+# --------------------------------
 
+def formatear_kpi(valor, unidad):
+    if unidad == "%":
+        return f"{valor:.1f} %"
+    elif unidad == "min":
+        return f"{valor:.1f} min"
+    elif unidad == "$":
+        return f"${valor:,.0f}"
+    elif unidad == "eventos":
+        return f"{int(valor)} eventos"
+    else:
+        return str(valor)
+
+def estado_operacional(prod, espera, fallas):
+    if prod >= 95 and espera < 5 and fallas < 1000:
+        return "🟢 Sistema estable"
+    elif prod >= 85:
+        return "🟡 Sistema en alerta"
+    else:
+        return "🔴 Sistema crítico"
+
+def motor_dispatch(df):
     colas = df.groupby("Pala_activa")["Espera"].mean()
     prod = df.groupby("Pala_activa")["Real"].sum()
 
@@ -61,7 +83,7 @@ def motor_dispatch(df):
     return ranking, colas, prod
 
 # --------------------------------
-# APP
+#  APP
 # --------------------------------
 
 if not archivo:
@@ -72,30 +94,32 @@ df = cargar(archivo)
 ind = indicadores(df)
 
 # --------------------------------
-# SALA DE CONTROL
+# SALA DE CONTROL (MEJORADA)
 # --------------------------------
 
 st.subheader("Sala de Control")
 
 c1, c2, c3, c4 = st.columns(4)
 
-c1.metric("Producción %", round(ind["prod"],1))
-c2.metric("Perforación %", round(ind["perf"],1))
-c3.metric("Espera", round(ind["espera"],1))
-c4.metric("Fallas", ind["mant"])
+c1.metric("Producción (%)", formatear_kpi(ind["prod"], "%"))
+c2.metric("Perforación (%)", formatear_kpi(ind["perf"], "%"))
+c3.metric("Tiempo Espera (min)", formatear_kpi(ind["espera"], "min"))
+c4.metric("Fallas Equipos", formatear_kpi(ind["mant"], "eventos"))
 
 # --------------------------------
-# ESTADO GLOBAL
+# 🟢 ESTADO OPERACIONAL
 # --------------------------------
 
 st.subheader("Estado Operacional")
 
-if ind["prod"] < 85:
-    st.error("🔴 Sistema crítico")
-elif ind["espera"] > 5:
-    st.warning("🟡 Sistema congestionado")
+estado = estado_operacional(ind["prod"], ind["espera"], ind["mant"])
+
+if "estable" in estado:
+    st.success(estado)
+elif "alerta" in estado:
+    st.warning(estado)
 else:
-    st.success("🟢 Sistema estable")
+    st.error(estado)
 
 # --------------------------------
 # DIAGNÓSTICO
@@ -105,11 +129,20 @@ st.subheader("Diagnóstico")
 
 problemas = diagnostico(ind)
 
-for p in problemas:
-    st.warning(p)
+if "Baja producción" in problemas:
+    st.warning("⚠️ Producción bajo objetivo")
+
+if "Congestión flota" in problemas:
+    st.warning("⚠️ Tiempos de espera elevados")
+
+if "Baja perforación" in problemas:
+    st.warning("⚠️ Bajo rendimiento de perforación")
+
+if "Fallas equipos" in problemas:
+    st.warning("⚠️ Alta tasa de fallas en equipos")
 
 if not problemas:
-    st.success("Operación balanceada")
+    st.success("✅ Operación balanceada")
 
 # --------------------------------
 # IMPACTO ECONÓMICO
@@ -117,14 +150,15 @@ if not problemas:
 
 st.subheader("Impacto Económico")
 
-precio = st.number_input("Precio tonelada", 100)
+precio = st.number_input("Precio por tonelada ($)", 100)
 
 perdida = df["Plan"].sum() - df["Real"].sum()
+impacto = perdida * precio
 
-st.metric("Pérdida $", int(perdida * precio))
+st.metric("Pérdida económica", formatear_kpi(impacto, "$"))
 
 # --------------------------------
-# MOTOR DISPATCH
+# 🚛 MOTOR DISPATCH
 # --------------------------------
 
 ranking, colas, prod = motor_dispatch(df)
@@ -146,14 +180,12 @@ col2.info(f"Próxima asignación: {segunda}")
 st.subheader("Decisión por Equipo")
 
 for pala in ranking:
-
     col1, col2 = st.columns(2)
-
     col1.success(f"{pala} → Prioridad")
     col2.info(f"{pala} → Flujo recomendado")
 
 # --------------------------------
-# SIMULADOR DESPACHO
+# SIMULACIÓN DISPATCH
 # --------------------------------
 
 st.subheader("Simulación Dispatch")
@@ -161,14 +193,12 @@ st.subheader("Simulación Dispatch")
 n = st.slider("Camiones", 1, 30, 10)
 
 colas_sim = colas.copy()
-prod_sim = prod.copy()
-
 asignaciones = []
 
 for i in range(n):
-    mejor = min(colas_sim.index, key=lambda p: colas_sim[p])
-    asignaciones.append(mejor)
-    colas_sim[mejor] += 0.7
+    mejor_sim = min(colas_sim.index, key=lambda p: colas_sim[p])
+    asignaciones.append(mejor_sim)
+    colas_sim[mejor_sim] += 0.7
 
 st.dataframe(pd.DataFrame({
     "Camión": range(1,n+1),
@@ -188,248 +218,29 @@ balance = pd.DataFrame({
 
 st.plotly_chart(px.bar(balance, x="Proceso", y="Valor", color="Valor"),
                 use_container_width=True)
-import time
-import random
 
 # --------------------------------
-# SIMULACIÓN TIEMPO REAL
+# ALERTAS INTELIGENTES (MEJORADAS)
 # --------------------------------
 
-st.subheader("Simulación Operacional en Tiempo Real")
-
-if "Pala_activa" in df.columns:
-
-    # estado inicial
-    palas = list(df["Pala_activa"].unique())
-
-    colas = {p: random.uniform(1,4) for p in palas}
-    produccion = {p: random.randint(1000,3000) for p in palas}
-
-    # control
-    iniciar = st.button("▶️ Iniciar Simulación")
-    detener = st.button("⛔ Detener")
-
-    placeholder = st.empty()
-
-    if iniciar:
-
-        for ciclo in range(50):  # ciclos simulados
-
-            if detener:
-                break
-
-            # lógica IA (decisión)
-            def score(p):
-                return colas[p]*0.6 + (1 - produccion[p]/max(produccion.values()))*20
-
-            mejor_pala = min(palas, key=score)
-
-            # simular llegada camión
-            colas[mejor_pala] += random.uniform(0.3,1)
-
-            # simular salida (descarga)
-            salida = random.choice(palas)
-
-            if colas[salida] > 0:
-                colas[salida] -= random.uniform(0.2,0.8)
-                produccion[salida] += random.randint(150,250)
-
-            # mostrar estado
-            with placeholder.container():
-
-                st.markdown(f"### Ciclo {ciclo+1}")
-
-                col1, col2 = st.columns(2)
-
-                col1.success(f"Enviar camión a: {mejor_pala}")
-                col2.info(f"Producción total: {sum(produccion.values())}")
-
-                st.write("### 📊 Estado Palas")
-
-                estado_df = pd.DataFrame({
-                    "Pala": palas,
-                    "Cola": [round(colas[p],2) for p in palas],
-                    "Producción": [produccion[p] for p in palas]
-                })
-
-                st.dataframe(estado_df)
-
-            time.sleep(1)
-# --------------------------------
-# MOTOR DE OPTIMIZACIÓN PIOM (CORE)
-# --------------------------------
-
-st.subheader("Optimización PIOM ")
-
-if "Pala_activa" in df.columns:
-
-    # estado actual
-    colas = df.groupby("Pala_activa")["Espera"].mean().to_dict()
-    produccion = df.groupby("Pala_activa")["Real"].sum().to_dict()
-
-    palas = list(colas.keys())
-
-    # parámetros del sistema
-    capacidad_pala = {p: 6 for p in palas}  # capacidad máxima camiones
-    carga_actual = {p: 0 for p in palas}
-
-    # función de costo
-    def costo(p):
-
-        # congestión
-        congestion = colas[p]
-
-        # desbalance
-        balance = (max(produccion.values()) - produccion[p]) / max(produccion.values())
-
-        # saturación
-        saturacion = carga_actual[p] / capacidad_pala[p]
-
-        return (
-            congestion * 0.5 +
-            balance * 30 +
-            saturacion * 20
-        )
-
-    # simulación asignación
-    n_camiones = st.slider("Camiones a optimizar", 1, 50, 15)
-
-    asignaciones = []
-
-    for i in range(n_camiones):
-
-        mejor = min(palas, key=costo)
-
-        asignaciones.append(mejor)
-
-        # actualizar sistema dinámico
-        carga_actual[mejor] += 1
-        colas[mejor] += 0.6
-        produccion[mejor] += 200
-
-    # resultados
-    resultado = pd.DataFrame({
-        "Camión": [f"CA-{i+1}" for i in range(n_camiones)],
-        "Destino Óptimo": asignaciones
-    })
-
-    st.dataframe(resultado)
-
-    # resumen
-    st.subheader("Distribución Óptima")
-
-    distribucion = pd.Series(asignaciones).value_counts()
-
-    st.bar_chart(distribucion)
-# --------------------------------
-# IA OPERACIONAL AVANZADA (ROBUSTA)
-# --------------------------------
-
-st.subheader(" Operación Avanzada")
-
-columnas_requeridas = ["Pala_activa","Espera","Real"]
-
-faltantes = [c for c in columnas_requeridas if c not in df.columns]
-
-if faltantes:
-    st.error(f"Faltan columnas para IA: {faltantes}")
-else:
-
-    colas = df.groupby("Pala_activa")["Espera"].mean().to_dict()
-    produccion = df.groupby("Pala_activa")["Real"].sum().to_dict()
-
-    # si no existe tiempo_ciclo, lo estimamos
-    if "tiempo_ciclo" in df.columns:
-        ciclos = df.groupby("Pala_activa")["tiempo_ciclo"].mean().to_dict()
-    else:
-        ciclos = {p: 20 for p in colas.keys()}  # valor estimado
-
-    palas = list(colas.keys())
-    max_prod = max(produccion.values())
-
-    def costo(p):
-        return (
-            ciclos[p]*0.4 +
-            colas[p]*0.3 +
-            (1 - produccion[p]/max_prod)*20
-        )
-
-    ranking = sorted(palas, key=costo)
-
-    mejor = ranking[0]
-    segunda = ranking[1] if len(ranking) > 1 else mejor
-
-    st.success(f"Enviar camiones a: {mejor}")
-    st.info(f"Asignación automática: enviar próximo camión a {segunda}")
-
-    # ---------------- RESULTADO ----------------
-
-    st.subheader("Decisión Inteligente")
-
-    st.success(f"Enviar camiones a: {mejor}")
-    st.info(f"Asignación automática: enviar próximo camión a {segunda}")
-
-    # ---------------- EXPLICACIÓN ----------------
-
-    st.subheader("📡 Explicación IA")
-
-# ---------------- IA EXPLICATIVA ----------------
-
-analisis = {}
-
-for p in palas:
-
-    problemas = []
-
-    if colas[p] > 5:
-        problemas.append("alta congestión")
-
-    if produccion[p] < max_prod * 0.7:
-        problemas.append("baja producción")
-
-    analisis[p] = problemas
-
-# usar análisis
-problemas = analisis[mejor]
-
-# mostrar resultado (OJO AQUÍ)
-if problemas:
-    st.warning(f"{mejor} tiene: {', '.join(problemas)}")
-else:
-    st.success(f"{mejor} es óptima")
-    # ---------------- PREDICCIÓN ----------------
-
-    st.subheader("redicción Operacional")
-
-    futura_espera = colas[mejor] + 2
-
-    if futura_espera > 6:
-        st.error("Riesgo de congestión en los próximos ciclos")
-    else:
-        st.success("Sistema estable en los próximos ciclos")
-
-    # ---------------- ALERTAS ----------------
 st.subheader("Alertas Inteligentes")
 
 hay_alertas = False
+max_prod = max(prod.values())
 
-for p in palas:
+for p in colas:
 
-    if colas[p] > 4:
-        st.warning(f"{p} con congestión")
+    if colas[p] > 5:
+        st.error(f"{p} saturada (alta congestión)")
         hay_alertas = True
 
-    elif produccion[p] < max_prod * 0.8:
+    elif colas[p] > 3:
+        st.warning(f"{p} en riesgo de congestión")
+        hay_alertas = True
+
+    if prod[p] < max_prod * 0.8:
         st.warning(f"{p} bajo rendimiento")
         hay_alertas = True
 
 if not hay_alertas:
     st.success("Sistema sin alertas críticas")
-if colas[p] > 3:
-    st.warning(f"{p} posible congestión futura")
-if colas[p] > 5:
-    st.error(f"{p} saturada")
-elif colas[p] > 3:
-    st.warning(f"{p} en riesgo de congestión")
-else:
-    st.info(f"{p} operación estable")
