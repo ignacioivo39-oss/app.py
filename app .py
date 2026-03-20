@@ -227,7 +227,8 @@ st.subheader("Alertas Inteligentes")
 
 hay_alertas = False
 
-max_prod = prod.max()
+prod = prod.to_dict()
+max_prod = max(prod.values())
 
 for p in colas.index:
     colas[p]
