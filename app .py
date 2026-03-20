@@ -409,11 +409,21 @@ else:
         st.success("Sistema estable en los próximos ciclos")
 
     # ---------------- ALERTAS ----------------
+st.subheader("🚨 Alertas Inteligentes")
 
-    st.subheader("🚨 Alertas Inteligentes")
+hay_alertas = False
 
-    for p in palas:
-        if colas[p] > 6:
-            st.error(f"{p} saturada")
-        elif produccion[p] < max_prod * 0.6:
-            st.warning(f"{p} bajo rendimiento")
+for p in palas:
+
+    if colas[p] > 4:
+        st.warning(f"{p} con congestión")
+        hay_alertas = True
+
+    elif produccion[p] < max_prod * 0.8:
+        st.warning(f"{p} bajo rendimiento")
+        hay_alertas = True
+
+if not hay_alertas:
+    st.success("Sistema sin alertas críticas")
+if colas[p] > 3:
+    st.warning(f"{p} posible congestión futura")
