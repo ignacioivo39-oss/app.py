@@ -390,13 +390,20 @@ else:
 # --------------------------------
 # 📄 GENERAR REPORTE PDF
 # --------------------------------
+# --------------------------------
+# 📄 GENERAR REPORTE PDF (CORREGIDO)
+# --------------------------------
 
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
 from reportlab.lib.styles import getSampleStyleSheet
+import tempfile
 
 def generar_pdf(ind, problemas, perdida, precio, ranking, colas):
 
-    doc = SimpleDocTemplate("/mnt/data/reporte_PIOM.pdf")
+    # ✅ ruta segura (SOLUCIÓN AL ERROR)
+    ruta = tempfile.NamedTemporaryFile(delete=False, suffix=".pdf").name
+
+    doc = SimpleDocTemplate(ruta)
     styles = getSampleStyleSheet()
 
     contenido = []
@@ -438,7 +445,7 @@ def generar_pdf(ind, problemas, perdida, precio, ranking, colas):
         contenido.append(Paragraph(f"Priorizar: {ranking[0]}", styles["Normal"]))
     contenido.append(Spacer(1, 10))
 
-    # ALERTA
+    # ALERTA FUTURA
     if ranking:
         futura = colas[ranking[0]] + 2
         if futura > 6:
@@ -448,7 +455,13 @@ def generar_pdf(ind, problemas, perdida, precio, ranking, colas):
 
     doc.build(contenido)
 
-    return "/mnt/data/reporte_PIOM.pdf"
+    return ruta
+
+
+# --------------------------------
+# 📥 BOTÓN DESCARGA PDF (CORREGIDO)
+# --------------------------------
+
 if st.button("📄 Generar Reporte PDF"):
 
     with st.spinner("Generando reporte..."):
