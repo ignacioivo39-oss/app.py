@@ -246,7 +246,6 @@ for i in range(n_camiones):
     asignaciones.append(mejor_pala)
     colas[mejor_pala] += 0.5  # simula llegada
 st.subheader("🚚 Asignaciones Automáticas")
-
 st.write("Asignaciones generadas por IA:")
 st.write(asignaciones)
 def score_pala(p):
