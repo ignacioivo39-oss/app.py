@@ -5,7 +5,7 @@ import numpy as np
 
 st.set_page_config(page_title="PIOM ENTERPRISE", layout="wide")
 
-st.title("⛏️ PIOM ENTERPRISE - Sistema Inteligente de Operación Minera")
+st.title("PIOM  - Sistema Inteligente de Operación Minera")
 st.markdown("### Control • Predicción • Optimización • Decisión")
 
 archivo = st.file_uploader("Cargar datos operacionales", type=["xlsx"])
@@ -75,7 +75,7 @@ ind = indicadores(df)
 # SALA DE CONTROL
 # --------------------------------
 
-st.subheader("🎛️ Sala de Control")
+st.subheader("Sala de Control")
 
 c1, c2, c3, c4 = st.columns(4)
 
@@ -101,7 +101,7 @@ else:
 # DIAGNÓSTICO
 # --------------------------------
 
-st.subheader("🧠 Diagnóstico Inteligente")
+st.subheader("Diagnóstico")
 
 problemas = diagnostico(ind)
 
@@ -115,7 +115,7 @@ if not problemas:
 # IMPACTO ECONÓMICO
 # --------------------------------
 
-st.subheader("💰 Impacto Económico")
+st.subheader("Impacto Económico")
 
 precio = st.number_input("Precio tonelada", 100)
 
@@ -129,7 +129,7 @@ st.metric("Pérdida $", int(perdida * precio))
 
 ranking, colas, prod = motor_dispatch(df)
 
-st.subheader("🚚 Motor de Despacho Inteligente")
+st.subheader("Motor de Despacho")
 
 mejor = ranking[0]
 segunda = ranking[1] if len(ranking)>1 else ranking[0]
@@ -143,7 +143,7 @@ col2.info(f"Próxima asignación: {segunda}")
 # DECISIÓN POR EQUIPO
 # --------------------------------
 
-st.subheader("🏗️ Decisión por Equipo")
+st.subheader("Decisión por Equipo")
 
 for pala in ranking:
 
@@ -156,7 +156,7 @@ for pala in ranking:
 # SIMULADOR DESPACHO
 # --------------------------------
 
-st.subheader("🚚 Simulación Dispatch")
+st.subheader("Simulación Dispatch")
 
 n = st.slider("Camiones", 1, 30, 10)
 
@@ -237,11 +237,11 @@ if "Pala_activa" in df.columns:
             # mostrar estado
             with placeholder.container():
 
-                st.markdown(f"### ⏱️ Ciclo {ciclo+1}")
+                st.markdown(f"### Ciclo {ciclo+1}")
 
                 col1, col2 = st.columns(2)
 
-                col1.success(f"🚚 Enviar camión a: {mejor_pala}")
+                col1.success(f"Enviar camión a: {mejor_pala}")
                 col2.info(f"📊 Producción total: {sum(produccion.values())}")
 
                 st.write("### 📊 Estado Palas")
@@ -259,7 +259,7 @@ if "Pala_activa" in df.columns:
 # MOTOR DE OPTIMIZACIÓN PIOM (CORE)
 # --------------------------------
 
-st.subheader("🧠 Motor de Optimización PIOM (Nivel Profesional)")
+st.subheader("Optimización PIOM ")
 
 if "Pala_activa" in df.columns:
 
@@ -316,7 +316,7 @@ if "Pala_activa" in df.columns:
     st.dataframe(resultado)
 
     # resumen
-    st.subheader("📊 Distribución Óptima")
+    st.subheader("Distribución Óptima")
 
     distribucion = pd.Series(asignaciones).value_counts()
 
@@ -325,7 +325,7 @@ if "Pala_activa" in df.columns:
 # IA OPERACIONAL AVANZADA (ROBUSTA)
 # --------------------------------
 
-st.subheader("🧠 IA Operacional Avanzada")
+st.subheader(" Operación Avanzada")
 
 columnas_requeridas = ["Pala_activa","Espera","Real"]
 
@@ -364,7 +364,7 @@ else:
 
     # ---------------- RESULTADO ----------------
 
-    st.subheader("🚚 Decisión Inteligente")
+    st.subheader("Decisión Inteligente")
 
     st.success(f"Enviar camiones a: {mejor}")
     st.info(f"Asignación automática: enviar próximo camión a {segunda}")
@@ -399,7 +399,7 @@ else:
     st.success(f"{mejor} es óptima")
     # ---------------- PREDICCIÓN ----------------
 
-    st.subheader("🔮 Predicción Operacional")
+    st.subheader("redicción Operacional")
 
     futura_espera = colas[mejor] + 2
 
@@ -409,7 +409,7 @@ else:
         st.success("Sistema estable en los próximos ciclos")
 
     # ---------------- ALERTAS ----------------
-st.subheader("🚨 Alertas Inteligentes")
+st.subheader("Alertas Inteligentes")
 
 hay_alertas = False
 
