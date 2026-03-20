@@ -563,3 +563,62 @@ balance = {
 }
 
 st.write(balance)
+# --------------------------------
+# SIMULACIÓN DISPATCH TIEMPO REAL
+# --------------------------------
+
+import time
+import random
+
+st.subheader("🚚 Simulación Dispatch en Tiempo Real")
+
+# parámetros
+n_camiones = st.slider("Número de camiones", 5, 20, 10)
+palas = ["Pala-1", "Pala-2", "Pala-3"]
+
+# estado inicial
+colas = {p: random.randint(0,3) for p in palas}
+produccion = {p: 0 for p in palas}
+
+simular = st.button("Iniciar Simulación")
+
+if simular:
+
+    placeholder = st.empty()
+
+    for t in range(20):  # 20 ciclos simulados
+
+        # elegir camión
+        camion = f"CA-{random.randint(1,n_camiones)}"
+
+        # elegir mejor pala (menor cola)
+        mejor_pala = min(colas, key=colas.get)
+
+        # actualizar cola
+        colas[mejor_pala] += 1
+
+        # simular descarga (sale camión)
+        pala_salida = random.choice(palas)
+
+        if colas[pala_salida] > 0:
+            colas[pala_salida] -= 1
+            produccion[pala_salida] += random.randint(180,220)
+
+        # mostrar estado
+        with placeholder.container():
+
+            st.write(f"⏱️ Ciclo {t+1}")
+            st.write(f"🚚 {camion} asignado a {mejor_pala}")
+
+            st.write("📊 Colas actuales:")
+            st.write(colas)
+
+            st.write("⛏️ Producción acumulada:")
+            st.write(produccion)
+
+        time.sleep(1)
+        # asignación inteligente mejorada
+mejor_pala = min(
+    colas,
+    key=lambda p: colas[p] + (produccion[p] / 1000)
+)
