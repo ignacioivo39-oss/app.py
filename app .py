@@ -255,3 +255,69 @@ if "Pala_activa" in df.columns:
                 st.dataframe(estado_df)
 
             time.sleep(1)
+# --------------------------------
+# MOTOR DE OPTIMIZACIÓN PIOM (CORE)
+# --------------------------------
+
+st.subheader("🧠 Motor de Optimización PIOM (Nivel Profesional)")
+
+if "Pala_activa" in df.columns:
+
+    # estado actual
+    colas = df.groupby("Pala_activa")["Espera"].mean().to_dict()
+    produccion = df.groupby("Pala_activa")["Real"].sum().to_dict()
+
+    palas = list(colas.keys())
+
+    # parámetros del sistema
+    capacidad_pala = {p: 6 for p in palas}  # capacidad máxima camiones
+    carga_actual = {p: 0 for p in palas}
+
+    # función de costo
+    def costo(p):
+
+        # congestión
+        congestion = colas[p]
+
+        # desbalance
+        balance = (max(produccion.values()) - produccion[p]) / max(produccion.values())
+
+        # saturación
+        saturacion = carga_actual[p] / capacidad_pala[p]
+
+        return (
+            congestion * 0.5 +
+            balance * 30 +
+            saturacion * 20
+        )
+
+    # simulación asignación
+    n_camiones = st.slider("Camiones a optimizar", 1, 50, 15)
+
+    asignaciones = []
+
+    for i in range(n_camiones):
+
+        mejor = min(palas, key=costo)
+
+        asignaciones.append(mejor)
+
+        # actualizar sistema dinámico
+        carga_actual[mejor] += 1
+        colas[mejor] += 0.6
+        produccion[mejor] += 200
+
+    # resultados
+    resultado = pd.DataFrame({
+        "Camión": [f"CA-{i+1}" for i in range(n_camiones)],
+        "Destino Óptimo": asignaciones
+    })
+
+    st.dataframe(resultado)
+
+    # resumen
+    st.subheader("📊 Distribución Óptima")
+
+    distribucion = pd.Series(asignaciones).value_counts()
+
+    st.bar_chart(distribucion)
