@@ -6,10 +6,10 @@ import random
 
 st.set_page_config(page_title="PIOM ENTERPRISE", layout="wide")
 
-st.title("⛏️ PIOM - Plataforma Inteligente de Operación Minera")
+st.title("PIOM - Plataforma Inteligente de Operación Minera")
 st.markdown("### Control • Diagnóstico • Optimización • Predicción • IA")
 
-archivo = st.file_uploader("📂 Cargar datos operacionales", type=["xlsx"])
+archivo = st.file_uploader("Cargar datos operacionales", type=["xlsx"])
 
 # --------------------------------
 # 🔧 VALIDACIÓN
@@ -33,7 +33,7 @@ def indicadores(df):
     return {
         "prod": df["Real"].sum()/df["Plan"].sum()*100 if df["Plan"].sum()>0 else 0,
         "perf": df["Metros_real"].sum()/df["Metros_plan"].sum()*100 if df["Metros_plan"].sum()>0 else 0,
-        "espera": df["Espera"].mean(),
+        "espera": df["Espera"].mean()eventos(),
         "mant": df["Mant_no_prog"].sum()
     }
 
