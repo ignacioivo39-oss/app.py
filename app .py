@@ -226,7 +226,7 @@ st.plotly_chart(px.bar(balance, x="Proceso", y="Valor", color="Valor"),
 st.subheader("Alertas Inteligentes")
 
 hay_alertas = False
-max_prod = max(prod.values())
+max_prod = prod.max()
 
 for p in colas:
 
