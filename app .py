@@ -347,3 +347,38 @@ if perdida > 0:
 else:
 
     st.success("Producción cumplida o superada")
+# ---------------- IA DESPACHO POR EQUIPO ----------------
+
+st.subheader("🤖 IA Despacho por Equipo")
+
+if "pala_activa" in df.columns:
+
+    colas = df.groupby("pala_activa")["espera"].mean()
+    produccion = df.groupby("pala_activa")["real"].sum()
+
+    max_prod = produccion.max()
+
+    def score(p):
+        return (
+            colas[p] * 0.5 +
+            (1 - produccion[p]/max_prod) * 20
+        )
+
+    palas = list(colas.index)
+
+    for pala in palas:
+
+        # ranking completo
+        ranking = sorted(palas, key=score)
+
+        mejor = ranking[0]
+        segunda = ranking[1] if len(ranking) > 1 else ranking[0]
+
+        # contenedor visual tipo sala control
+        col1, col2 = st.columns(2)
+
+        with col1:
+            st.success(f"Enviar camiones a: {mejor}")
+
+        with col2:
+            st.info(f"Asignación automática: enviar próximo camión a {segunda}")
