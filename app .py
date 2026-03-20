@@ -253,6 +253,51 @@ def score_pala(p):
         colas[p] * 0.5 +
         (100 - produccion[p] / max(produccion)) * 50
     )
+    st.subheader("🚚 IA Despacho Masivo (Nivel Pro)")
+
+n_camiones = st.slider("Cantidad de camiones a asignar", 1, 50, 10)
+
+if "pala_activa" in df.columns:
+
+    colas = df.groupby("pala_activa")["espera"].mean().to_dict()
+    produccion = df.groupby("pala_activa")["real"].sum().to_dict()
+
+    # normalización
+    max_prod = max(produccion.values())
+
+    def score(p):
+        return colas[p]*0.6 + (1 - produccion[p]/max_prod)*10
+
+    asignaciones = []
+
+    for i in range(n_camiones):
+
+        mejor = min(colas, key=score)
+
+        asignaciones.append(mejor)
+
+        # simular impacto en sistema
+        colas[mejor] += 0.8
+        produccion[mejor] += 200
+
+    # resultado
+    resultado = pd.DataFrame({
+        "Camión": [f"CA-{i+1}" for i in range(n_camiones)],
+        "Pala Asignada": asignaciones
+    })
+
+    st.dataframe(resultado)
+
+    # resumen
+    resumen = pd.Series(asignaciones).value_counts()
+
+    st.subheader("📊 Distribución de Flota")
+    st.bar_chart(resumen)
+ def score(p):
+    return (
+        colas[p]*0.5 +                  # congestión
+        (1 - produccion[p]/max_prod)*20 # falta de producción
+    )
 # ---------------- BALANCE ----------------
 
 st.subheader("⚖️ Balance Sistema")
