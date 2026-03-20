@@ -373,7 +373,7 @@ else:
 
     st.subheader("📡 Explicación IA")
 
-    # ---------------- IA EXPLICATIVA ----------------
+# ---------------- IA EXPLICATIVA ----------------
 
 analisis = {}
 
@@ -392,11 +392,11 @@ for p in palas:
 # usar análisis
 problemas = analisis[mejor]
 
-    if problemas:
-        st.warning(f"{mejor} optimiza el sistema porque tiene: {', '.join(problemas)}")
-    else:
-        st.success(f"{mejor} es la pala más eficiente del sistema")
-
+# mostrar resultado (OJO AQUÍ)
+if problemas:
+    st.warning(f"{mejor} tiene: {', '.join(problemas)}")
+else:
+    st.success(f"{mejor} es óptima")
     # ---------------- PREDICCIÓN ----------------
 
     st.subheader("🔮 Predicción Operacional")
