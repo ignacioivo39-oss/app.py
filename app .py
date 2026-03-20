@@ -373,7 +373,24 @@ else:
 
     st.subheader("📡 Explicación IA")
 
-    problemas = analisis[mejor]
+    # ---------------- IA EXPLICATIVA ----------------
+
+analisis = {}
+
+for p in palas:
+
+    problemas = []
+
+    if colas[p] > 5:
+        problemas.append("alta congestión")
+
+    if produccion[p] < max_prod * 0.7:
+        problemas.append("baja producción")
+
+    analisis[p] = problemas
+
+# usar análisis
+problemas = analisis[mejor]
 
     if problemas:
         st.warning(f"{mejor} optimiza el sistema porque tiene: {', '.join(problemas)}")
