@@ -427,3 +427,9 @@ if not hay_alertas:
     st.success("Sistema sin alertas críticas")
 if colas[p] > 3:
     st.warning(f"{p} posible congestión futura")
+if colas[p] > 5:
+    st.error(f"{p} saturada")
+elif colas[p] > 3:
+    st.warning(f"{p} en riesgo de congestión")
+else:
+    st.info(f"{p} operación estable")
