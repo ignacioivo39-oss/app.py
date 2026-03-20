@@ -291,4 +291,59 @@ fig = px.line(
 )
 
 st.plotly_chart(fig, use_container_width=True)
+# --------------------------------
+# ESTADO OPERACIONAL MINA
+# --------------------------------
 
+st.subheader("📡 Estado del Sistema Mina")
+
+estado = "🟢 Operación Normal"
+
+if indicadores["Producción"] < 85:
+    estado = "🔴 Riesgo Producción"
+
+elif indicadores["Espera Camiones"] > 5:
+    estado = "🟡 Congestión Transporte"
+
+elif indicadores["Perforación"] < 90:
+    estado = "🟡 Baja Perforación"
+
+st.markdown(f"### {estado}")
+# --------------------------------
+# RANKING EQUIPOS
+# --------------------------------
+
+st.subheader("🏆 Ranking de Equipos")
+
+ranking_palas = df.groupby("Pala_activa")[["Real","Plan"]].sum()
+
+ranking_palas["Eficiencia"] = (
+    ranking_palas["Real"] /
+    ranking_palas["Plan"]
+) * 100
+
+ranking_palas = ranking_palas.sort_values(
+    "Eficiencia",
+    ascending=False
+)
+
+st.dataframe(ranking_palas)
+# --------------------------------
+# PERDIDA DE PRODUCCIÓN
+# --------------------------------
+
+st.subheader("📉 Pérdida de Producción")
+
+produccion_plan = df["Plan"].sum()
+
+produccion_real = df["Real"].sum()
+
+perdida = produccion_plan - produccion_real
+
+if perdida > 0:
+
+    st.error(f"Se perdieron {int(perdida)} toneladas en el turno")
+
+else:
+
+    st.success("Producción cumplida o superada")
