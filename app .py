@@ -407,4 +407,40 @@ if "espera" in df.columns:
 
     if ciclo > 30:
         st.error("Ciclo alto → baja eficiencia")
-        
+        from sklearn.ensemble import RandomForestRegressor
+
+st.subheader("🤖 IA por Pala")
+
+if "pala_activa" in df.columns:
+
+    data = df[["pala_activa","plan","espera","real"]]
+
+    # convertir texto a número
+    data = pd.get_dummies(data, columns=["pala_activa"])
+
+    X = data.drop("real", axis=1)
+    y = data["real"]
+
+    modelo = RandomForestRegressor()
+    modelo.fit(X, y)
+
+    pred = modelo.predict(X)
+
+    st.write("Predicción promedio:", int(pred.mean()))
+st.subheader("🚨 IA detección equipos deficientes")
+
+df["ratio"] = df["real"] / df["plan"]
+
+bajo = df[df["ratio"] < 0.8]
+
+if not bajo.empty:
+    st.error("Equipos bajo rendimiento detectados")
+    st.dataframe(bajo)
+    st.subheader("🚚 IA recomendación flota")
+
+espera = df["espera"].mean()
+
+if espera > 5:
+    st.warning("Reducir camiones → congestión")
+elif espera < 2:
+    st.success("Aumentar camiones → capacidad disponible")
