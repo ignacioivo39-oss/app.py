@@ -17,18 +17,8 @@ except:
 
 st.set_page_config(page_title="PIOM PRO", layout="wide")
 
-# ---------------- ESTILO SALA CONTROL ----------------
-
-st.markdown("""
-<style>
-body {background-color: #0E1117;}
-.block-container {padding-top: 1rem;}
-h1, h2, h3 {color: white;}
-</style>
-""", unsafe_allow_html=True)
-
-st.title("⛏️ PIOM PRO - Sala de Control Minera")
-st.write("Sistema inteligente de optimización operacional")
+st.title("⛏️ PIOM PRO - Inteligencia Operacional Minera")
+st.write("Optimización de producción, flota y decisiones en tiempo real")
 
 archivo = st.file_uploader("Subir archivo Excel operacional", type=["xlsx"])
 
@@ -60,12 +50,12 @@ def calcular_indicadores(df):
 
 def estado_mina(ind):
     if ind["Producción"] < 85 and ind["Espera"] > 5:
-        return "🔴 SISTEMA SATURADO"
+        return "🔴 Sistema Saturado"
     elif ind["Producción"] < 90:
-        return "🟡 RIESGO PRODUCTIVO"
+        return "🟡 Riesgo Productivo"
     elif ind["Espera"] > 4:
-        return "🟡 CONGESTIÓN"
-    return "🟢 OPERACIÓN NORMAL"
+        return "🟡 Congestión Transporte"
+    return "🟢 Operación Normal"
 
 def detectar_cuello(ind):
     problema = {
@@ -76,7 +66,7 @@ def detectar_cuello(ind):
     }
     return max(problema, key=problema.get)
 
-# ---------------- APP ----------------
+# ---------------- APP PRINCIPAL ----------------
 
 if not archivo:
     st.info("Sube un archivo Excel para comenzar")
@@ -90,36 +80,19 @@ if "real" not in df.columns or "plan" not in df.columns:
 
 indicadores = calcular_indicadores(df)
 
-# ---------------- KPI SALA CONTROL ----------------
+# ---------------- KPI ----------------
 
-st.subheader("🎛️ Sala de Control Operacional")
+st.subheader("📊 KPIs Operacionales")
 
-c1, c2, c3, c4 = st.columns(4)
-
-def color(valor, bueno, medio):
-    if valor >= bueno:
-        return "🟢"
-    elif valor >= medio:
-        return "🟡"
-    return "🔴"
-
-c1.metric("Producción", f"{round(indicadores['Producción'],1)}% {color(indicadores['Producción'],95,85)}")
-c2.metric("Perforación", f"{round(indicadores['Perforación'],1)}% {color(indicadores['Perforación'],90,80)}")
-c3.metric("Espera", f"{round(indicadores['Espera'],1)} min")
-c4.metric("Mantención", indicadores["Mant"])
+c1, c2, c3 = st.columns(3)
+c1.metric("Perforación %", round(indicadores["Perforación"], 1))
+c2.metric("Producción %", round(indicadores["Producción"], 1))
+c3.metric("Espera (min)", round(indicadores["Espera"], 1))
 
 # ---------------- ESTADO ----------------
 
-st.subheader("🚨 Estado Global")
-
-estado = estado_mina(indicadores)
-
-if "🔴" in estado:
-    st.error(estado)
-elif "🟡" in estado:
-    st.warning(estado)
-else:
-    st.success(estado)
+st.subheader("📡 Estado Sistema")
+st.markdown(f"### {estado_mina(indicadores)}")
 
 # ---------------- CUELLO ----------------
 
@@ -127,42 +100,37 @@ cuello = detectar_cuello(indicadores)
 st.subheader("🚨 Cuello de Botella")
 st.error(cuello)
 
-# ---------------- DECISIONES ----------------
-
-st.subheader("🧠 Decisiones Automáticas")
-
-acciones = []
-
-if indicadores["Perforación"] < 85:
-    acciones.append("Aumentar perforación")
-
-if indicadores["Espera"] > 5:
-    acciones.append("Reducir flota")
-
-if indicadores["Producción"] < 90:
-    acciones.append("Optimizar carguío")
-
-for a in acciones:
-    st.warning(f"➡ {a}")
-
-if not acciones:
-    st.success("Sistema optimizado")
-
 # ---------------- IMPACTO ----------------
 
 st.subheader("💰 Impacto Económico")
 
 precio = st.number_input("Precio tonelada ($)", value=100)
 perdida = df["plan"].sum() - df["real"].sum()
+impacto = perdida * precio
 
 if perdida > 0:
-    st.error(f"Pérdida estimada: ${int(perdida * precio):,}")
+    st.error(f"Pérdida estimada: ${int(impacto):,}")
 else:
     st.success("Sin pérdidas")
 
-# ---------------- IA ----------------
+# ---------------- IA HISTÓRICA ----------------
 
-st.subheader("🤖 IA Predictiva")
+st.subheader("🧠 Aprendizaje")
+
+if st.button("Guardar turno"):
+    nuevo = pd.DataFrame({
+        "real": [df["real"].sum()],
+        "plan": [df["plan"].sum()],
+        "espera": [df["espera"].mean()]
+    })
+    hist = pd.read_csv("historico.csv")
+    hist = pd.concat([hist, nuevo], ignore_index=True)
+    hist.to_csv("historico.csv", index=False)
+    st.success("Turno guardado")
+
+# ---------------- IA PREDICTIVA ----------------
+
+st.subheader("🤖 Predicción")
 
 if IA_OK:
     hist = pd.read_csv("historico.csv")
@@ -175,51 +143,73 @@ if IA_OK:
         modelo.fit(X, y)
 
         pred = modelo.predict([[df["plan"].sum(), df["espera"].mean()]])[0]
+        st.metric("Producción estimada IA", int(pred))
 
-        st.metric("Producción estimada", int(pred))
+        if abs(pred - df["real"].sum()) > df["plan"].sum() * 0.1:
+            st.error("Riesgo alto")
+        else:
+            st.success("Riesgo bajo")
+
     else:
-        st.info("Faltan datos históricos")
+        st.info("Se requieren más datos históricos")
 else:
     st.warning("IA no disponible")
 
 # ---------------- GRÁFICOS ----------------
 
-st.subheader("📊 Monitoreo Operacional")
+st.subheader("📈 Producción")
 
-col1, col2 = st.columns(2)
+st.plotly_chart(
+    px.line(df, y=["plan","real"], markers=True),
+    use_container_width=True
+)
 
-with col1:
-    st.plotly_chart(px.line(df, y=["plan","real"], title="Producción"), use_container_width=True)
+df["desv"] = ((df["real"] - df["plan"]) / df["plan"].replace(0,1)) * 100
 
-with col2:
-    st.plotly_chart(px.bar(df, y="espera", title="Espera Camiones"), use_container_width=True)
+st.subheader("📉 Desviación")
 
-# ---------------- DISPATCH ----------------
+st.plotly_chart(
+    px.bar(df, y="desv", color="desv"),
+    use_container_width=True
+)
 
-st.subheader("🚚 Control de Flota")
+# ---------------- IA POR EQUIPO ----------------
+
+st.subheader("🧠 IA por Equipo")
+
+if IA_OK and "pala_activa" in df.columns:
+
+    data = df[["pala_activa","plan","espera","real"]]
+    data = pd.get_dummies(data, columns=["pala_activa"])
+
+    X = data.drop("real", axis=1)
+    y = data["real"]
+
+    modelo = RandomForestRegressor()
+    modelo.fit(X, y)
+
+    st.metric("Predicción promedio", int(modelo.predict(X).mean()))
+
+# ---------------- MOTOR DISPATCH ----------------
+
+st.subheader("🚚 Motor de Despacho")
 
 if "pala_activa" in df.columns:
 
     colas = df.groupby("pala_activa")["espera"].mean()
-    mejor = colas.idxmin()
+    mejor_pala = colas.idxmin()
 
-    st.success(f"Enviar camiones a: {mejor}")
+    st.success(f"Asignar camiones a: {mejor_pala}")
     st.dataframe(colas)
 
-# ---------------- BALANCE ----------------
+# ---------------- BALANCE SISTEMA ----------------
 
 st.subheader("⚖️ Balance Sistema")
 
-balance_df = pd.DataFrame({
-    "Proceso": ["Perforación","Carguío","Transporte"],
-    "Valor": [
-        indicadores["Perforación"],
-        indicadores["Producción"],
-        100 - indicadores["Espera"] * 10
-    ]
-})
+balance = {
+    "Perforación": indicadores["Perforación"],
+    "Carguío": indicadores["Producción"],
+    "Transporte": 100 - indicadores["Espera"] * 10
+}
 
-st.plotly_chart(
-    px.bar(balance_df, x="Proceso", y="Valor", color="Valor"),
-    use_container_width=True
-)
+st.write(balance)
