@@ -321,3 +321,91 @@ if "Pala_activa" in df.columns:
     distribucion = pd.Series(asignaciones).value_counts()
 
     st.bar_chart(distribucion)
+# --------------------------------
+# IA AVANZADA PIOM (NIVEL IMPACTO)
+# --------------------------------
+
+st.subheader("🧠 IA Operacional Avanzada")
+
+if all(col in df.columns for col in ["Pala_activa","Espera","tiempo_ciclo","Real"]):
+
+    colas = df.groupby("Pala_activa")["Espera"].mean().to_dict()
+    ciclos = df.groupby("Pala_activa")["tiempo_ciclo"].mean().to_dict()
+    produccion = df.groupby("Pala_activa")["Real"].sum().to_dict()
+
+    palas = list(colas.keys())
+    max_prod = max(produccion.values())
+
+    def analizar_pala(p):
+
+        espera = colas[p]
+        ciclo = ciclos[p]
+        prod = produccion[p]
+
+        problemas = []
+
+        if espera > 5:
+            problemas.append("alta congestión")
+
+        if ciclo > 25:
+            problemas.append("ciclo lento")
+
+        if prod < max_prod * 0.7:
+            problemas.append("baja producción")
+
+        return problemas
+
+    # evaluar todas
+    analisis = {p: analizar_pala(p) for p in palas}
+
+    # función costo real
+    def costo(p):
+        return (
+            ciclos[p]*0.4 +
+            colas[p]*0.3 +
+            (1 - produccion[p]/max_prod)*20
+        )
+
+    ranking = sorted(palas, key=costo)
+
+    mejor = ranking[0]
+    segunda = ranking[1] if len(ranking) > 1 else mejor
+
+    # ---------------- RESULTADO ----------------
+
+    st.subheader("🚚 Decisión Inteligente")
+
+    st.success(f"Enviar camiones a: {mejor}")
+    st.info(f"Asignación automática: enviar próximo camión a {segunda}")
+
+    # ---------------- EXPLICACIÓN ----------------
+
+    st.subheader("📡 Explicación IA")
+
+    problemas = analisis[mejor]
+
+    if problemas:
+        st.warning(f"{mejor} optimiza el sistema porque tiene: {', '.join(problemas)}")
+    else:
+        st.success(f"{mejor} es la pala más eficiente del sistema")
+
+    # ---------------- PREDICCIÓN ----------------
+
+    st.subheader("🔮 Predicción Operacional")
+
+    futura_espera = colas[mejor] + 2
+
+    if futura_espera > 6:
+        st.error("Riesgo de congestión en los próximos ciclos")
+    else:
+        st.success("Sistema estable en los próximos ciclos")
+
+    # ---------------- ALERTAS ----------------
+
+    st.subheader("🚨 Alertas Inteligentes")
+
+    for p in palas:
+        if colas[p] > 6:
+            st.error(f"{p} saturada")
+        elif produccion[p] < max_prod * 0.6:
+            st.warning(f"{p} bajo rendimiento")
