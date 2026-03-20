@@ -451,3 +451,115 @@ if espera > 5:
     st.warning("Reducir camiones → congestión")
 elif espera < 2:
     st.success("Aumentar camiones → capacidad disponible")
+# --------------------------------
+# MOTOR DE DESPACHO INTEGRADO
+# --------------------------------
+
+st.subheader("🧠 Motor de Despacho Integrado")
+
+acciones = []
+
+# --- PERFORACIÓN ---
+if "metros_real" in df.columns and "metros_plan" in df.columns:
+
+    perf = df["metros_real"].sum() / df["metros_plan"].sum() * 100
+
+    if perf < 85:
+        acciones.append("Aumentar perforación → cuello upstream")
+
+# --- TRANSPORTE ---
+if "espera" in df.columns:
+
+    espera = df["espera"].mean()
+
+    if espera > 5:
+        acciones.append("Reducir camiones → congestión")
+
+    elif espera < 2:
+        acciones.append("Agregar camiones → capacidad disponible")
+
+# --- CARGUÍO ---
+if "pala_activa" in df.columns:
+
+    prod_pala = df.groupby("pala_activa")["real"].sum()
+
+    if prod_pala.std() > prod_pala.mean() * 0.3:
+        acciones.append("Redistribuir camiones entre palas")
+
+# --- MANTENCIÓN ---
+if "mant_no_prog" in df.columns:
+
+    if df["mant_no_prog"].sum() > 20:
+        acciones.append("Aumentar mantenimiento preventivo")
+
+# RESULTADO FINAL
+if acciones:
+    for a in acciones:
+        st.warning(a)
+else:
+    st.success("Sistema balanceado")
+    # --------------------------------
+# MOTOR DE DESPACHO INTEGRADO
+# --------------------------------
+
+st.subheader("Motor de Despacho Integrado")
+
+acciones = []
+
+# --- PERFORACIÓN ---
+if "metros_real" in df.columns and "metros_plan" in df.columns:
+
+    perf = df["metros_real"].sum() / df["metros_plan"].sum() * 100
+
+    if perf < 85:
+        acciones.append("Aumentar perforación → cuello upstream")
+
+# --- TRANSPORTE ---
+if "espera" in df.columns:
+
+    espera = df["espera"].mean()
+
+    if espera > 5:
+        acciones.append("Reducir camiones → congestión")
+
+    elif espera < 2:
+        acciones.append("Agregar camiones → capacidad disponible")
+
+# --- CARGUÍO ---
+if "pala_activa" in df.columns:
+
+    prod_pala = df.groupby("pala_activa")["real"].sum()
+
+    if prod_pala.std() > prod_pala.mean() * 0.3:
+        acciones.append("Redistribuir camiones entre palas")
+
+# --- MANTENCIÓN ---
+if "mant_no_prog" in df.columns:
+
+    if df["mant_no_prog"].sum() > 20:
+        acciones.append("Aumentar mantenimiento preventivo")
+
+# RESULTADO FINAL
+if acciones:
+    for a in acciones:
+        st.warning(a)
+else:
+    st.success("Sistema balanceado")
+    st.subheader("Asignación Inteligente de Camiones")
+
+if "pala_activa" in df.columns:
+
+    colas = df.groupby("pala_activa")["espera"].mean()
+
+    mejor_pala = colas.idxmin()
+
+    st.success(f"Enviar camiones a: {mejor_pala}")
+    st.subheader("Balance Sistema Mina")
+
+balance = {
+    "Perforación": perf if "metros_real" in df else 100,
+    "Carguío": df["real"].sum() / df["plan"].sum() * 100,
+    "Transporte": 100 - df["espera"].mean() * 10
+}
+
+st.write(balance)
