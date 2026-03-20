@@ -219,3 +219,156 @@ Cuello: {cuello}
 
 else:
     st.info("Sube un archivo Excel para comenzar")
+st.subheader("🚚 IA Optimización de Flota")
+
+capacidad = st.number_input("Capacidad camión (ton)", 200)
+tiempo_ciclo = st.number_input("Tiempo ciclo (min)", 25)
+
+mejor_prod = 0
+mejor_n = 0
+
+for n in range(1, 25):
+    prod = (n * capacidad * 12 * 60) / tiempo_ciclo
+
+    if prod > mejor_prod:
+        mejor_prod = prod
+        mejor_n = n
+
+st.success(f"Flota óptima recomendada: {mejor_n} camiones")
+
+# Comparación real
+prod_actual = (8 * capacidad * 12 * 60) / tiempo_ciclo
+
+st.write(f"Producción actual estimada: {int(prod_actual)} ton")
+st.write(f"Producción óptima estimada: {int(mejor_prod)} ton")
+st.subheader("🔧 IA Mantenimiento Predictivo")
+
+if indicadores["Mant"] > 20:
+    st.error("Alta tasa de fallas detectada")
+
+    if indicadores["Producción"] < 90:
+        st.warning("Impacto directo en producción")
+
+    st.info("Recomendación: aumentar mantenimiento preventivo")
+
+else:
+    st.success("Nivel de mantenimiento controlado")
+    st.subheader("⛏️ IA Optimización Perforación")
+
+if "metros_real" in df.columns and "metros_plan" in df.columns:
+
+    perf = indicadores["Perforación"]
+
+    if perf < 85:
+        st.error("Baja eficiencia de perforación")
+
+        st.info("Acciones sugeridas:")
+        st.write("- Revisar tiempos de cambio de barra")
+        st.write("- Evaluar disponibilidad de equipos")
+        st.write("- Capacitación operador")
+
+    else:
+        st.success("Perforación eficiente")
+        st.subheader("🧠 Diagnóstico Inteligente")
+
+if indicadores["Espera"] > 5:
+    causa = "Transporte saturado"
+elif indicadores["Mant"] > 20:
+    causa = "Fallas de equipos"
+elif indicadores["Perforación"] < 90:
+    causa = "Perforación deficiente"
+else:
+    causa = "Sistema balanceado"
+
+st.warning(f"Problema raíz detectado: {causa}")
+# --------------------------------
+# IA POR EQUIPO
+# --------------------------------
+
+st.subheader("🧠 IA por Equipo (Análisis Avanzado)")
+
+# ---- PALAS ----
+if "pala_activa" in df.columns:
+
+    pala = df.groupby("pala_activa")[["real","plan"]].sum()
+    pala["eficiencia"] = (pala["real"] / pala["plan"]) * 100
+
+    peor_pala = pala["eficiencia"].idxmin()
+    mejor_pala = pala["eficiencia"].idxmax()
+
+    st.write(f"🔻 Peor pala: **{peor_pala}** ({round(pala.loc[peor_pala,'eficiencia'],1)}%)")
+    st.write(f"🔺 Mejor pala: **{mejor_pala}** ({round(pala.loc[mejor_pala,'eficiencia'],1)}%)")
+
+    if pala.loc[peor_pala,"eficiencia"] < 85:
+        st.error(f"Pala crítica detectada: {peor_pala}")
+        st.info("Acción: redistribuir camiones o revisar operador")
+
+# ---- PERFORADORAS ----
+if "equipo_perforacion" in df.columns:
+
+    perf = df.groupby("equipo_perforacion")[["metros_real","metros_plan"]].sum()
+    perf["eficiencia"] = (perf["metros_real"] / perf["metros_plan"]) * 100
+
+    peor_perf = perf["eficiencia"].idxmin()
+
+    if perf.loc[peor_perf,"eficiencia"] < 85:
+        st.error(f"Perforadora crítica: {peor_perf}")
+        st.info("Acción: revisar disponibilidad o tiempos muertos")
+
+# ---- CAMIONES (SI EXISTEN) ----
+if "camion" in df.columns:
+
+    cam = df.groupby("camion")["espera"].mean().reset_index()
+
+    peor_camion = cam.sort_values("espera", ascending=False).iloc[0]
+
+    if peor_camion["espera"] > 6:
+        st.error(f"Camión con mayor espera: {peor_camion['camion']}")
+        st.info("Acción: revisar asignación de flota")
+        # --------------------------------
+# SALA DE CONTROL MINA
+# --------------------------------
+
+st.subheader("🎛️ Sala de Control Operacional")
+
+col1, col2, col3 = st.columns(3)
+
+# Producción
+if indicadores["Producción"] >= 95:
+    col1.success("Producción 🟢")
+elif indicadores["Producción"] >= 85:
+    col1.warning("Producción 🟡")
+else:
+    col1.error("Producción 🔴")
+
+# Transporte
+if indicadores["Espera"] <= 3:
+    col2.success("Transporte 🟢")
+elif indicadores["Espera"] <= 5:
+    col2.warning("Transporte 🟡")
+else:
+    col2.error("Transporte 🔴")
+
+# Mantención
+if indicadores["Mant"] <= 10:
+    col3.success("Equipos 🟢")
+elif indicadores["Mant"] <= 20:
+    col3.warning("Equipos 🟡")
+else:
+    col3.error("Equipos 🔴")
+    st.subheader("📊 Mapa de Eficiencia Equipos")
+
+if "pala_activa" in df.columns:
+
+    ef = df.groupby("pala_activa")[["real","plan"]].sum()
+    ef["eficiencia"] = (ef["real"] / ef["plan"]) * 100
+
+    fig = px.bar(
+        ef.reset_index(),
+        x="pala_activa",
+        y="eficiencia",
+        color="eficiencia",
+        color_continuous_scale="RdYlGn"
+    )
+
+    st.plotly_chart(fig, use_container_width=True)
