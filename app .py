@@ -296,7 +296,7 @@ if not hay:
 # 📊 RESUMEN EJECUTIVO
 # --------------------------------
 
-st.subheader("📊 Resumen Ejecutivo")
+st.subheader("Resumen Ejecutivo")
 
 # estado general
 estado_general = estado(ind["prod"], ind["espera"], ind["mant"])
@@ -316,7 +316,7 @@ produccion_total = df["Real"].sum()
 # TEXTO EJECUTIVO
 # --------------------------------
 
-st.markdown("### 🧠 Estado General de la Operación")
+st.markdown("### Estado General de la Operación")
 
 if "Estable" in estado_general:
     st.success(f"La operación se encuentra en condición ESTABLE, con una producción de {formatear(ind['prod'],'%')} y tiempos de espera controlados ({formatear(ind['espera'],'min')}).")
@@ -331,7 +331,7 @@ else:
 # PROBLEMAS CLAVE
 # --------------------------------
 
-st.markdown("### ⚠️ Principales Desviaciones")
+st.markdown("### Principales Desviaciones")
 
 if problemas:
     for p in problemas:
@@ -343,7 +343,7 @@ else:
 # IMPACTO ECONÓMICO
 # --------------------------------
 
-st.markdown("### 💰 Impacto Económico")
+st.markdown("### Impacto Económico")
 
 st.write(f"Pérdida estimada: **{formatear(perdida * precio, '$')}**")
 
@@ -351,7 +351,7 @@ st.write(f"Pérdida estimada: **{formatear(perdida * precio, '$')}**")
 # ANÁLISIS OPERACIONAL
 # --------------------------------
 
-st.markdown("### 🚛 Análisis Operacional")
+st.markdown("### Análisis Operacional")
 
 if pala_critica:
     st.write(f"La mayor congestión se presenta en **{pala_critica}**, lo que puede impactar la continuidad operacional.")
@@ -363,8 +363,8 @@ if ranking:
 # PROYECCIÓN
 # --------------------------------
 
-st.markdown("### 🔮 Proyección")
-
+st.markdown("### Proyección")
+ 
 if ranking:
     futura = colas[ranking[0]] + 2
 
@@ -377,7 +377,7 @@ if ranking:
 # CONCLUSIÓN
 # --------------------------------
 
-st.markdown("### 📌 Conclusión")
+st.markdown("### Conclusión")
 
 if "Crítico" in estado_general:
     st.error("Se requiere intervención inmediata en la operación para recuperar niveles de producción.")
