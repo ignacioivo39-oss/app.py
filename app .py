@@ -193,31 +193,40 @@ with col1:
 
 with col2:
     st.plotly_chart(px.bar(df, y="espera", title="Espera Camiones"), use_container_width=True)
+# ---------------- IA DESPACHO REAL POR EQUIPO ----------------
 
-# ---------------- IA DESPACHO AVANZADO ----------------
+st.subheader("🤖 IA Despacho por Equipo (Nivel Real)")
 
-st.subheader("🤖 IA Despacho Inteligente")
+if "pala_activa" in df.columns:
 
-if "pala_activa" in df.columns and "espera" in df.columns:
-
-    # estado del sistema
     colas = df.groupby("pala_activa")["espera"].mean()
     produccion = df.groupby("pala_activa")["real"].sum()
 
     max_prod = produccion.max()
 
-    # función mejorada
-    def score_pala(p):
-        return (
-            colas[p] * 0.5 +                     # congestión
-            (1 - produccion[p]/max_prod) * 20    # baja producción
-        )
+    def score(p):
+        return colas[p]*0.5 + (1 - produccion[p]/max_prod)*20
 
-    # ranking completo
-    ranking = sorted(colas.index, key=score_pala)
+    palas = list(colas.index)
 
-    mejor_pala = ranking[0]
-    segunda_pala = ranking[1] if len(ranking) > 1 else ranking[0]
+    for pala in palas:
+
+        # excluir la misma pala para decisión secundaria
+        otras_palas = [p for p in palas if p != pala]
+
+        mejor = min(palas, key=score)
+        segunda = min(otras_palas, key=score) if otras_palas else mejor
+
+        st.markdown(f"### 🏗️ {pala}")
+
+        col1, col2 = st.columns(2)
+
+        with col1:
+            st.success(f"Enviar camiones a: {mejor}")
+
+        with col2:
+            st.info(f"Asignación automática: enviar próximo camión a {segunda}")
+
 
     # ---------------- MENSAJES PROFESIONALES ----------------
 
