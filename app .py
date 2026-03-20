@@ -9,9 +9,9 @@ from sklearn.linear_model import LinearRegression
 # CONFIG
 # --------------------------------
 
-st.set_page_config(page_title="PIOM PRO IA", layout="wide")
+st.set_page_config(page_title="PIOM", layout="wide")
 
-st.title("⛏️ PIOM PRO IA - Inteligencia Operacional Minera")
+st.title("⛏️ PIOM - Inteligencia Operacional Minera")
 st.write("Sistema inteligente con aprendizaje automático")
 
 archivo = st.file_uploader("Subir Excel", type=["xlsx"])
