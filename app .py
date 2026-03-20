@@ -88,7 +88,7 @@ c4.metric("Fallas", ind["mant"])
 # ESTADO GLOBAL
 # --------------------------------
 
-st.subheader("📡 Estado Operacional")
+st.subheader("Estado Operacional")
 
 if ind["prod"] < 85:
     st.error("🔴 Sistema crítico")
@@ -179,7 +179,7 @@ st.dataframe(pd.DataFrame({
 # VISUAL
 # --------------------------------
 
-st.subheader("📊 Balance Sistema")
+st.subheader("Balance Sistema")
 
 balance = pd.DataFrame({
     "Proceso": ["Perforación","Producción","Transporte"],
@@ -195,7 +195,7 @@ import random
 # SIMULACIÓN TIEMPO REAL
 # --------------------------------
 
-st.subheader("🚨 Simulación Operacional en Tiempo Real")
+st.subheader("Simulación Operacional en Tiempo Real")
 
 if "Pala_activa" in df.columns:
 
@@ -242,7 +242,7 @@ if "Pala_activa" in df.columns:
                 col1, col2 = st.columns(2)
 
                 col1.success(f"Enviar camión a: {mejor_pala}")
-                col2.info(f"📊 Producción total: {sum(produccion.values())}")
+                col2.info(f"Producción total: {sum(produccion.values())}")
 
                 st.write("### 📊 Estado Palas")
 
