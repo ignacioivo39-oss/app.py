@@ -226,9 +226,12 @@ st.plotly_chart(px.bar(balance, x="Proceso", y="Valor", color="Valor"),
 st.subheader("Alertas Inteligentes")
 
 hay_alertas = False
-max_prod = max(prod.values())
+prod = prod.to_dict()
+max_prod = prod.max()
 
-for p in colas:
+for p in colas.index:
+    colas[p]
+    prod[p]
 
     if colas[p] > 5:
         st.error(f"{p} saturada (alta congestión)")
