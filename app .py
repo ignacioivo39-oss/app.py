@@ -3,15 +3,25 @@ import pandas as pd
 import plotly.express as px
 
 # --------------------------------
-# CONFIG
+# CONFIGURACIÓN APP
 # --------------------------------
 
-st.set_page_config(page_title="PIOM PRO", layout="wide")
+st.set_page_config(
+    page_title="PIOM - Plataforma Inteligencia Operacional Mina",
+    layout="wide"
+)
 
-st.title("⛏️ PIOM PRO - Inteligencia Operacional Minera")
-st.write("Sistema inteligente de optimización minera")
+st.title("⛏️ PIOM - Plataforma Inteligente de Optimización Minera")
+st.write("Análisis operacional completo del turno mina")
 
-archivo = st.file_uploader("Subir Excel", type=["xlsx"])
+# --------------------------------
+# SUBIR EXCEL
+# --------------------------------
+
+archivo = st.file_uploader(
+    "Subir archivo Excel operacional del turno",
+    type=["xlsx"]
+)
 
 # --------------------------------
 # FUNCIONES
@@ -20,355 +30,259 @@ archivo = st.file_uploader("Subir Excel", type=["xlsx"])
 @st.cache_data
 def cargar_excel(file):
     df = pd.read_excel(file)
-
-    # normalizar columnas (ANTI-ERROR)
-    df.columns = df.columns.str.lower().str.strip().str.replace(" ", "_")
-
-    return df.fillna(0)
+    df = df.fillna(0)
+    return df
 
 
 def calcular_indicadores(df):
 
-    perf = (df["metros_real"].sum() / df["metros_plan"].sum() * 100) \
-        if "metros_plan" in df and df["metros_plan"].sum() > 0 else 0
+    perf_turno = (
+        df["Metros_real"].sum() / df["Metros_plan"].sum() * 100
+        if df["Metros_plan"].sum() > 0 else 0
+    )
 
-    prod = (df["real"].sum() / df["plan"].sum() * 100) \
-        if df["plan"].sum() > 0 else 0
+    prod_turno = (
+        df["Real"].sum() / df["Plan"].sum() * 100
+        if df["Plan"].sum() > 0 else 0
+    )
 
-    espera = df["espera"].mean() if "espera" in df else 0
-    mant = df["mant_no_prog"].sum() if "mant_no_prog" in df else 0
+    espera_prom = df["Espera"].mean()
 
-    return {
-        "Perforación": perf,
-        "Producción": prod,
-        "Espera": espera,
-        "Mant": mant
+    mant_no_prog = df["Mant_no_prog"].sum()
+
+    indicadores = {
+        "Perforación": perf_turno,
+        "Producción": prod_turno,
+        "Espera Camiones": espera_prom,
+        "Mantención No Programada": mant_no_prog
     }
 
-
-def estado_mina(ind):
-
-    if ind["Producción"] < 85 and ind["Espera"] > 5:
-        return "🔴 Sistema Saturado"
-    elif ind["Producción"] < 90:
-        return "🟡 Riesgo Productivo"
-    elif ind["Espera"] > 4:
-        return "🟡 Congestión Transporte"
-    elif ind["Perforación"] < 90:
-        return "🟡 Baja Perforación"
-    return "🟢 Operación Normal"
+    return indicadores
 
 
-def detectar_cuello(ind):
+def detectar_cuello_botella(indicadores):
 
     problema = {
-        "Perforación": 100 - ind["Perforación"],
-        "Carguío": 100 - ind["Producción"],
-        "Transporte": ind["Espera"],
-        "Mantención": ind["Mant"]
+        "Perforación": 100 - indicadores["Perforación"],
+        "Carguío": 100 - indicadores["Producción"],
+        "Transporte": indicadores["Espera Camiones"],
+        "Mantención": indicadores["Mantención No Programada"]
     }
 
     return max(problema, key=problema.get)
 
 
+def detectar_equipos(df):
+
+    eficiencia_perf = df.groupby("Equipo_perforacion")[["Metros_real","Metros_plan"]].sum()
+
+    eficiencia_perf["ef"] = (
+        eficiencia_perf["Metros_real"] /
+        eficiencia_perf["Metros_plan"]
+    ) * 100
+
+    peor_perforadora = eficiencia_perf["ef"].idxmin()
+
+    eficiencia_pala = df.groupby("Pala_activa")[["Real","Plan"]].sum()
+
+    eficiencia_pala["ef"] = (
+        eficiencia_pala["Real"] /
+        eficiencia_pala["Plan"]
+    ) * 100
+
+    peor_pala = eficiencia_pala["ef"].idxmin()
+
+    return peor_perforadora, peor_pala
+
+
+def generar_recomendacion(cuello):
+
+    recomendaciones = {
+        "Perforación": "Revisar disponibilidad de perforadoras o tiempos de cambio de barra.",
+        "Carguío": "Optimizar tiempos de carguío o redistribuir camiones.",
+        "Transporte": "Reducir congestión de flota o mejorar tiempos de ciclo.",
+        "Mantención": "Revisar plan de mantenimiento para reducir fallas no programadas."
+    }
+
+    return recomendaciones.get(cuello, "Optimizar balance del sistema mina.")
+
+
 # --------------------------------
-# APP
+# APP PRINCIPAL
 # --------------------------------
 
 if archivo:
 
     df = cargar_excel(archivo)
 
-    columnas_base = ["real", "plan"]
+    columnas_necesarias = [
+        "Metros_real","Metros_plan",
+        "Real","Plan",
+        "Espera","Mant_no_prog",
+        "Equipo_perforacion","Pala_activa"
+    ]
 
-    faltantes = [c for c in columnas_base if c not in df.columns]
+    faltantes = [c for c in columnas_necesarias if c not in df.columns]
 
     if faltantes:
-        st.error(f"❌ Faltan columnas obligatorias: {faltantes}")
-        st.stop()
 
-    # indicadores SIEMPRE definidos antes de usar
-    indicadores = calcular_indicadores(df)
-
-    # ---------------- KPIs ----------------
-
-    c1, c2, c3 = st.columns(3)
-
-    c1.metric("Perforación %",
-              round(indicadores["Perforación"], 1))
-
-    c2.metric("Producción %",
-              round(indicadores["Producción"], 1))
-
-    c3.metric("Espera (min)",
-              round(indicadores["Espera"], 1))
-
-    # ---------------- ESTADO ----------------
-
-    st.subheader("📡 Estado del Sistema Mina")
-    st.markdown(f"### {estado_mina(indicadores)}")
-
-    # ---------------- CUELLO ----------------
-
-    cuello = detectar_cuello(indicadores)
-
-    st.subheader("🚨 Cuello de Botella")
-    st.error(cuello)
-
-    # ---------------- IMPACTO ECONÓMICO ----------------
-
-    st.subheader("💰 Impacto Económico")
-
-    precio = st.number_input("Precio por tonelada ($)", value=100)
-
-    perdida = df["plan"].sum() - df["real"].sum()
-
-    impacto = perdida * precio
-
-    if perdida > 0:
-        st.error(f"Pérdida: ${int(impacto):,}")
-    else:
-        st.success("Sin pérdidas económicas")
-
-    # ---------------- PREDICCIÓN ----------------
-
-    st.subheader("🔮 Predicción Producción")
-
-    df["real_acum"] = df["real"].cumsum()
-
-    tendencia = df["real_acum"].iloc[-1] / len(df)
-
-    pred = tendencia * 12
-
-    st.metric("Producción estimada turno", int(pred))
-
-    # ---------------- ALERTAS ----------------
-
-    st.subheader("🚨 Alertas Inteligentes")
-
-    alertas = []
-
-    if indicadores["Espera"] > 5:
-        alertas.append("Congestión en transporte")
-
-    if indicadores["Producción"] < 85:
-        alertas.append("Baja producción")
-
-    if indicadores["Mant"] > 20:
-        alertas.append("Alta mantención")
-
-    if alertas:
-        for a in alertas:
-            st.warning(a)
-    else:
-        st.success("Operación estable")
-
-    # ---------------- GRÁFICOS ----------------
-
-    st.subheader("📊 Producción")
-
-    st.plotly_chart(
-        px.line(df, y=["plan", "real"], markers=True),
-        use_container_width=True,
-        key="prod"
-    )
-
-    # desviación segura
-    df["desv"] = ((df["real"] - df["plan"]) / df["plan"].replace(0, 1)) * 100
-
-    st.subheader("📉 Desviación")
-
-    st.plotly_chart(
-        px.bar(df, y="desv", color="desv"),
-        use_container_width=True,
-        key="desv"
-    )
-
-    if "espera" in df.columns:
-        st.subheader("🚚 Espera Camiones")
-
-        st.plotly_chart(
-            px.line(df, y="espera"),
-            use_container_width=True,
-            key="espera"
-        )
-
-    # ---------------- RANKING ----------------
-
-    if "pala_activa" in df.columns:
-        st.subheader("🏆 Ranking Palas")
-
-        rank = df.groupby("pala_activa")[["real", "plan"]].sum()
-
-        rank["Eficiencia"] = (rank["real"] / rank["plan"]) * 100
-
-        st.dataframe(rank.sort_values("Eficiencia", ascending=False))
-
-    # ---------------- REPORTE ----------------
-
-    st.subheader("📄 Reporte Ejecutivo")
-
-    reporte = f"""
-Producción: {int(df["real"].sum())}
-Plan: {int(df["plan"].sum())}
-Estado: {estado_mina(indicadores)}
-Cuello: {cuello}
-"""
-
-    st.text_area("Reporte", reporte, height=150)
-
-else:
-    st.info("Sube un archivo Excel para comenzar")
-st.subheader("🚚 IA Optimización de Flota")
-
-capacidad = st.number_input("Capacidad camión (ton)", 200)
-tiempo_ciclo = st.number_input("Tiempo ciclo (min)", 25)
-
-mejor_prod = 0
-mejor_n = 0
-
-for n in range(1, 25):
-    prod = (n * capacidad * 12 * 60) / tiempo_ciclo
-
-    if prod > mejor_prod:
-        mejor_prod = prod
-        mejor_n = n
-
-st.success(f"Flota óptima recomendada: {mejor_n} camiones")
-
-# Comparación real
-prod_actual = (8 * capacidad * 12 * 60) / tiempo_ciclo
-
-st.write(f"Producción actual estimada: {int(prod_actual)} ton")
-st.write(f"Producción óptima estimada: {int(mejor_prod)} ton")
-st.subheader("🔧 IA Mantenimiento Predictivo")
-
-if indicadores["Mant"] > 20:
-    st.error("Alta tasa de fallas detectada")
-
-    if indicadores["Producción"] < 90:
-        st.warning("Impacto directo en producción")
-
-    st.info("Recomendación: aumentar mantenimiento preventivo")
-
-else:
-    st.success("Nivel de mantenimiento controlado")
-    st.subheader("⛏️ IA Optimización Perforación")
-
-if "metros_real" in df.columns and "metros_plan" in df.columns:
-
-    perf = indicadores["Perforación"]
-
-    if perf < 85:
-        st.error("Baja eficiencia de perforación")
-
-        st.info("Acciones sugeridas:")
-        st.write("- Revisar tiempos de cambio de barra")
-        st.write("- Evaluar disponibilidad de equipos")
-        st.write("- Capacitación operador")
+        st.error(f"❌ El archivo Excel no contiene estas columnas: {faltantes}")
 
     else:
-        st.success("Perforación eficiente")
-        st.subheader("🧠 Diagnóstico Inteligente")
 
-if indicadores["Espera"] > 5:
-    causa = "Transporte saturado"
-elif indicadores["Mant"] > 20:
-    causa = "Fallas de equipos"
-elif indicadores["Perforación"] < 90:
-    causa = "Perforación deficiente"
+        st.subheader("Datos Operacionales del Turno")
+        st.dataframe(df)
+
+        indicadores = calcular_indicadores(df)
+
+        col1, col2, col3 = st.columns(3)
+
+        col1.metric("Eficiencia Perforación %",
+                    round(indicadores["Perforación"],1))
+
+        col2.metric("Producción %",
+                    round(indicadores["Producción"],1))
+
+        col3.metric("Espera Camiones (min)",
+                    round(indicadores["Espera Camiones"],1))
+
+        # CUELLO BOTELLA
+
+        cuello = detectar_cuello_botella(indicadores)
+
+        st.subheader("🚨 Cuello de Botella Detectado")
+        st.error(cuello)
+
+        # EQUIPOS CRÍTICOS
+
+        peor_perf, peor_pala = detectar_equipos(df)
+
+        st.subheader("⚠️ Equipos Críticos")
+
+        st.write(f"Perforadora con menor rendimiento: **{peor_perf}**")
+        st.write(f"Pala con menor rendimiento: **{peor_pala}**")
+
+        # RECOMENDACIÓN
+
+        recomendacion = generar_recomendacion(cuello)
+
+        st.subheader("💡 Recomendación Operacional PIOM")
+        st.success(recomendacion)
+
+        # -----------------------------
+        # GRÁFICOS
+        # -----------------------------
+
+        st.subheader("📊 Producción Real vs Plan")
+
+        fig1 = px.line(df, y=["Plan","Real"], markers=True)
+
+        st.plotly_chart(fig1, use_container_width=True,
+                        key="grafico_produccion")
+
+        st.subheader("⛏️ Metros Perforados")
+
+        fig2 = px.line(df, y=["Metros_plan","Metros_real"], markers=True)
+
+        st.plotly_chart(fig2, use_container_width=True,
+                        key="grafico_perforacion")
+
+        st.subheader("🚚 Espera de Camiones")
+
+        fig3 = px.line(df, y="Espera", markers=True)
+
+        st.plotly_chart(fig3, use_container_width=True,
+                        key="grafico_espera")
+
+        st.subheader("⚙️ Producción por Pala")
+
+        prod_pala = df.groupby("Pala_activa")["Real"].sum().reset_index()
+
+        fig4 = px.bar(prod_pala,
+                      x="Pala_activa",
+                      y="Real")
+
+        st.plotly_chart(fig4, use_container_width=True,
+                        key="grafico_pala")
+
 else:
-    causa = "Sistema balanceado"
 
-st.warning(f"Problema raíz detectado: {causa}")
+    st.info("Sube el archivo Excel del turno para iniciar el análisis.")
+
+
 # --------------------------------
-# IA POR EQUIPO
+# SIMULADOR SISTEMA MINA
 # --------------------------------
 
-st.subheader("🧠 IA por Equipo (Análisis Avanzado)")
+st.subheader("🧠 Simulación Sistema Mina")
 
-# ---- PALAS ----
-if "pala_activa" in df.columns:
+camiones = st.slider("Número de camiones",1,20,8)
 
-    pala = df.groupby("pala_activa")[["real","plan"]].sum()
-    pala["eficiencia"] = (pala["real"] / pala["plan"]) * 100
+capacidad_camion = st.number_input("Capacidad camión (ton)",200)
 
-    peor_pala = pala["eficiencia"].idxmin()
-    mejor_pala = pala["eficiencia"].idxmax()
+tiempo_carguio = st.number_input("Tiempo carguío (min)",3)
 
-    st.write(f"🔻 Peor pala: **{peor_pala}** ({round(pala.loc[peor_pala,'eficiencia'],1)}%)")
-    st.write(f"🔺 Mejor pala: **{mejor_pala}** ({round(pala.loc[mejor_pala,'eficiencia'],1)}%)")
+viaje_cargado = st.number_input("Viaje cargado (min)",10)
 
-    if pala.loc[peor_pala,"eficiencia"] < 85:
-        st.error(f"Pala crítica detectada: {peor_pala}")
-        st.info("Acción: redistribuir camiones o revisar operador")
+descarga = st.number_input("Tiempo descarga (min)",2)
 
-# ---- PERFORADORAS ----
-if "equipo_perforacion" in df.columns:
+viaje_vacio = st.number_input("Viaje vacío (min)",8)
 
-    perf = df.groupby("equipo_perforacion")[["metros_real","metros_plan"]].sum()
-    perf["eficiencia"] = (perf["metros_real"] / perf["metros_plan"]) * 100
+espera = st.number_input("Espera promedio (min)",2)
 
-    peor_perf = perf["eficiencia"].idxmin()
+horas_turno = 12
 
-    if perf.loc[peor_perf,"eficiencia"] < 85:
-        st.error(f"Perforadora crítica: {peor_perf}")
-        st.info("Acción: revisar disponibilidad o tiempos muertos")
+tiempo_ciclo = (
+    tiempo_carguio +
+    viaje_cargado +
+    descarga +
+    viaje_vacio +
+    espera
+)
 
-# ---- CAMIONES (SI EXISTEN) ----
-if "camion" in df.columns:
+if tiempo_ciclo > 0:
 
-    cam = df.groupby("camion")["espera"].mean().reset_index()
+    produccion_turno = (
+        camiones *
+        capacidad_camion *
+        horas_turno *
+        60
+    ) / tiempo_ciclo
 
-    peor_camion = cam.sort_values("espera", ascending=False).iloc[0]
+    st.metric("Producción estimada turno (ton)",
+              int(produccion_turno))
 
-    if peor_camion["espera"] > 6:
-        st.error(f"Camión con mayor espera: {peor_camion['camion']}")
-        st.info("Acción: revisar asignación de flota")
-        # --------------------------------
-# SALA DE CONTROL MINA
+
+# --------------------------------
+# OPTIMIZADOR DE FLOTA
 # --------------------------------
 
-st.subheader("🎛️ Sala de Control Operacional")
+st.subheader("🚚 Optimización de Flota")
 
-col1, col2, col3 = st.columns(3)
+resultados = []
 
-# Producción
-if indicadores["Producción"] >= 95:
-    col1.success("Producción 🟢")
-elif indicadores["Producción"] >= 85:
-    col1.warning("Producción 🟡")
-else:
-    col1.error("Producción 🔴")
+for n in range(1,25):
 
-# Transporte
-if indicadores["Espera"] <= 3:
-    col2.success("Transporte 🟢")
-elif indicadores["Espera"] <= 5:
-    col2.warning("Transporte 🟡")
-else:
-    col2.error("Transporte 🔴")
+    prod = (
+        n *
+        capacidad_camion *
+        horas_turno *
+        60
+    ) / tiempo_ciclo if tiempo_ciclo > 0 else 0
 
-# Mantención
-if indicadores["Mant"] <= 10:
-    col3.success("Equipos 🟢")
-elif indicadores["Mant"] <= 20:
-    col3.warning("Equipos 🟡")
-else:
-    col3.error("Equipos 🔴")
-    st.subheader("📊 Mapa de Eficiencia Equipos")
+    resultados.append(prod)
 
-if "pala_activa" in df.columns:
+sim = pd.DataFrame({
+    "Camiones": range(1,25),
+    "Produccion": resultados
+})
 
-    ef = df.groupby("pala_activa")[["real","plan"]].sum()
-    ef["eficiencia"] = (ef["real"] / ef["plan"]) * 100
+fig = px.line(
+    sim,
+    x="Camiones",
+    y="Produccion",
+    markers=True
+)
 
-    fig = px.bar(
-        ef.reset_index(),
-        x="pala_activa",
-        y="eficiencia",
-        color="eficiencia",
-        color_continuous_scale="RdYlGn"
-    )
-
-    st.plotly_chart(fig, use_container_width=True)
+st.plotly_chart(fig, use_container_width=True,
+                key="grafico_optimizacion")
