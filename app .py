@@ -9,7 +9,7 @@ import plotly.express as px
 st.set_page_config(page_title="PIOM PRO", layout="wide")
 
 st.title("⛏️ PIOM PRO - Inteligencia Operacional Minera")
-st.write("Sistema inteligente de optimización y decisión minera")
+st.write("Sistema inteligente de optimización minera")
 
 archivo = st.file_uploader("Subir Excel", type=["xlsx"])
 
@@ -19,36 +19,56 @@ archivo = st.file_uploader("Subir Excel", type=["xlsx"])
 
 @st.cache_data
 def cargar_excel(file):
-    return pd.read_excel(file).fillna(0)
+    df = pd.read_excel(file)
+
+    # normalizar columnas (ANTI-ERROR)
+    df.columns = df.columns.str.lower().str.strip().str.replace(" ", "_")
+
+    return df.fillna(0)
 
 
-def indicadores(df):
+def calcular_indicadores(df):
+
+    perf = (df["metros_real"].sum() / df["metros_plan"].sum() * 100) \
+        if "metros_plan" in df and df["metros_plan"].sum() > 0 else 0
+
+    prod = (df["real"].sum() / df["plan"].sum() * 100) \
+        if df["plan"].sum() > 0 else 0
+
+    espera = df["espera"].mean() if "espera" in df else 0
+    mant = df["mant_no_prog"].sum() if "mant_no_prog" in df else 0
+
     return {
-        "Perforación": (df["Metros_real"].sum() / df["Metros_plan"].sum() * 100) if df["Metros_plan"].sum() else 0,
-        "Producción": (df["Real"].sum() / df["Plan"].sum() * 100) if df["Plan"].sum() else 0,
-        "Espera": df["Espera"].mean(),
-        "Mant": df["Mant_no_prog"].sum()
+        "Perforación": perf,
+        "Producción": prod,
+        "Espera": espera,
+        "Mant": mant
     }
 
 
-def estado(ind):
+def estado_mina(ind):
+
     if ind["Producción"] < 85 and ind["Espera"] > 5:
         return "🔴 Sistema Saturado"
     elif ind["Producción"] < 90:
         return "🟡 Riesgo Productivo"
     elif ind["Espera"] > 4:
         return "🟡 Congestión Transporte"
+    elif ind["Perforación"] < 90:
+        return "🟡 Baja Perforación"
     return "🟢 Operación Normal"
 
 
-def cuello(ind):
-    problemas = {
+def detectar_cuello(ind):
+
+    problema = {
         "Perforación": 100 - ind["Perforación"],
         "Carguío": 100 - ind["Producción"],
         "Transporte": ind["Espera"],
         "Mantención": ind["Mant"]
     }
-    return max(problemas, key=problemas.get)
+
+    return max(problema, key=problema.get)
 
 
 # --------------------------------
@@ -59,56 +79,64 @@ if archivo:
 
     df = cargar_excel(archivo)
 
-    cols = ["Metros_real","Metros_plan","Real","Plan","Espera","Mant_no_prog","Pala_activa"]
+    columnas_base = ["real", "plan"]
 
-    if any(c not in df.columns for c in cols):
-        st.error("Archivo incorrecto")
+    faltantes = [c for c in columnas_base if c not in df.columns]
+
+    if faltantes:
+        st.error(f"❌ Faltan columnas obligatorias: {faltantes}")
         st.stop()
 
-    ind = indicadores(df)
+    # indicadores SIEMPRE definidos antes de usar
+    indicadores = calcular_indicadores(df)
 
     # ---------------- KPIs ----------------
 
-    c1,c2,c3 = st.columns(3)
+    c1, c2, c3 = st.columns(3)
 
-    c1.metric("Perforación %", round(ind["Perforación"],1))
-    c2.metric("Producción %", round(ind["Producción"],1))
-    c3.metric("Espera", round(ind["Espera"],1))
+    c1.metric("Perforación %",
+              round(indicadores["Perforación"], 1))
+
+    c2.metric("Producción %",
+              round(indicadores["Producción"], 1))
+
+    c3.metric("Espera (min)",
+              round(indicadores["Espera"], 1))
 
     # ---------------- ESTADO ----------------
 
-    st.subheader("📡 Estado Sistema")
-    st.markdown(f"### {estado(ind)}")
+    st.subheader("📡 Estado del Sistema Mina")
+    st.markdown(f"### {estado_mina(indicadores)}")
 
     # ---------------- CUELLO ----------------
 
-    cu = cuello(ind)
+    cuello = detectar_cuello(indicadores)
 
     st.subheader("🚨 Cuello de Botella")
-    st.error(cu)
+    st.error(cuello)
 
     # ---------------- IMPACTO ECONÓMICO ----------------
 
     st.subheader("💰 Impacto Económico")
 
-    precio = st.number_input("Precio tonelada ($)", value=100)
+    precio = st.number_input("Precio por tonelada ($)", value=100)
 
-    perdida = df["Plan"].sum() - df["Real"].sum()
+    perdida = df["plan"].sum() - df["real"].sum()
 
     impacto = perdida * precio
 
     if perdida > 0:
         st.error(f"Pérdida: ${int(impacto):,}")
     else:
-        st.success("Sin pérdidas")
+        st.success("Sin pérdidas económicas")
 
     # ---------------- PREDICCIÓN ----------------
 
     st.subheader("🔮 Predicción Producción")
 
-    df["Real_acum"] = df["Real"].cumsum()
+    df["real_acum"] = df["real"].cumsum()
 
-    tendencia = df["Real_acum"].iloc[-1] / len(df)
+    tendencia = df["real_acum"].iloc[-1] / len(df)
 
     pred = tendencia * 12
 
@@ -120,103 +148,74 @@ if archivo:
 
     alertas = []
 
-    if ind["Espera"] > 5:
-        alertas.append("Congestión de transporte")
+    if indicadores["Espera"] > 5:
+        alertas.append("Congestión en transporte")
 
-    if ind["Producción"] < 85:
+    if indicadores["Producción"] < 85:
         alertas.append("Baja producción")
 
-    if ind["Mant"] > 20:
+    if indicadores["Mant"] > 20:
         alertas.append("Alta mantención")
 
-    for a in alertas:
-        st.warning(a)
-
-    if not alertas:
-        st.success("Operación estable")
-
-    # ---------------- DIAGNÓSTICO ----------------
-
-    st.subheader("🔍 Diagnóstico")
-
-    if ind["Espera"] > 5:
-        st.warning("Problema raíz: transporte")
-
-    elif ind["Producción"] < 85:
-        st.warning("Problema raíz: producción")
-
+    if alertas:
+        for a in alertas:
+            st.warning(a)
     else:
-        st.success("Sistema balanceado")
+        st.success("Operación estable")
 
     # ---------------- GRÁFICOS ----------------
 
     st.subheader("📊 Producción")
 
     st.plotly_chart(
-        px.line(df, y=["Plan","Real"], markers=True),
-        use_container_width=True, key="g1"
+        px.line(df, y=["plan", "real"], markers=True),
+        use_container_width=True,
+        key="prod"
     )
+
+    # desviación segura
+    df["desv"] = ((df["real"] - df["plan"]) / df["plan"].replace(0, 1)) * 100
 
     st.subheader("📉 Desviación")
 
-    df["Desv"] = (df["Real"] - df["Plan"]) / df["Plan"] * 100
-
     st.plotly_chart(
-        px.bar(df, y="Desv", color="Desv"),
-        use_container_width=True, key="g2"
+        px.bar(df, y="desv", color="desv"),
+        use_container_width=True,
+        key="desv"
     )
 
-    st.subheader("🚚 Espera")
+    if "espera" in df.columns:
+        st.subheader("🚚 Espera Camiones")
 
-    st.plotly_chart(
-        px.line(df, y="Espera"),
-        use_container_width=True, key="g3"
-    )
-
-    # ---------------- OPTIMIZADOR ----------------
-
-    st.subheader("🚚 Optimización Flota")
-
-    camiones = st.slider("Camiones",1,20,8)
-    capacidad = st.number_input("Capacidad",200)
-    ciclo = st.number_input("Tiempo ciclo",25)
-
-    prod = (camiones * capacidad * 12 * 60) / ciclo
-
-    st.metric("Producción estimada", int(prod))
-
-    mejor = 0
-    mejor_n = 0
-
-    for n in range(1,25):
-        p = (n * capacidad * 12 * 60) / ciclo
-        if p > mejor:
-            mejor = p
-            mejor_n = n
-
-    st.success(f"Flota óptima: {mejor_n} camiones")
+        st.plotly_chart(
+            px.line(df, y="espera"),
+            use_container_width=True,
+            key="espera"
+        )
 
     # ---------------- RANKING ----------------
 
-    st.subheader("🏆 Ranking Palas")
+    if "pala_activa" in df.columns:
+        st.subheader("🏆 Ranking Palas")
 
-    rank = df.groupby("Pala_activa")[["Real","Plan"]].sum()
-    rank["Eficiencia"] = rank["Real"]/rank["Plan"]*100
+        rank = df.groupby("pala_activa")[["real", "plan"]].sum()
 
-    st.dataframe(rank.sort_values("Eficiencia", ascending=False))
+        rank["Eficiencia"] = (rank["real"] / rank["plan"]) * 100
+
+        st.dataframe(rank.sort_values("Eficiencia", ascending=False))
 
     # ---------------- REPORTE ----------------
 
     st.subheader("📄 Reporte Ejecutivo")
 
-    rep = f"""
-Producción: {int(df["Real"].sum())}
-Plan: {int(df["Plan"].sum())}
-Estado: {estado(ind)}
-Cuello: {cu}
+    reporte = f"""
+Producción: {int(df["real"].sum())}
+Plan: {int(df["plan"].sum())}
+Estado: {estado_mina(indicadores)}
+Cuello: {cuello}
 """
 
-    st.text_area("Reporte", rep, height=150)
+    st.text_area("Reporte", reporte, height=150)
 
 else:
-    st.info("Sube archivo Excel")
+    st.info("Sube un archivo Excel para comenzar")
