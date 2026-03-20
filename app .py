@@ -172,44 +172,98 @@ if archivo:
         # -----------------------------
         # GRÁFICOS
         # -----------------------------
+st.markdown("### 🔍 Estado del Sistema")
 
-        st.subheader("📊 Producción Real vs Plan")
-
-        fig1 = px.line(df, y=["Plan","Real"], markers=True)
-
-        st.plotly_chart(fig1, use_container_width=True,
-                        key="grafico_produccion")
-
-        st.subheader("⛏️ Metros Perforados")
-
-        fig2 = px.line(df, y=["Metros_plan","Metros_real"], markers=True)
-
-        st.plotly_chart(fig2, use_container_width=True,
-                        key="grafico_perforacion")
-
-        st.subheader("🚚 Espera de Camiones")
-
-        fig3 = px.line(df, y="Espera", markers=True)
-
-        st.plotly_chart(fig3, use_container_width=True,
-                        key="grafico_espera")
-
-        st.subheader("⚙️ Producción por Pala")
-
-        prod_pala = df.groupby("Pala_activa")["Real"].sum().reset_index()
-
-        fig4 = px.bar(prod_pala,
-                      x="Pala_activa",
-                      y="Real")
-
-        st.plotly_chart(fig4, use_container_width=True,
-                        key="grafico_pala")
-
+if rendimiento_total > 90:
+    st.success("Sistema en control")
+elif rendimiento_total > 75:
+    st.warning("Sistema con desviaciones")
 else:
+    st.error("Sistema crítico")
+st.subheader("📊 Producción vs Plan (con desviación)")
 
-    st.info("Sube el archivo Excel del turno para iniciar el análisis.")
+df["Desviacion_%"] = (df["Real"] - df["Plan"]) / df["Plan"] * 100
 
+fig1 = px.line(
+    df,
+    y=["Plan","Real"],
+    title="Producción Real vs Plan"
+)
 
+fig1.add_scatter(
+    y=df["Plan"],
+    mode='lines',
+    name='Meta',
+    line=dict(dash='dash')
+)
+
+st.plotly_chart(fig1, use_container_width=True, key="g1")
+
+st.subheader("📉 Desviación de Producción (%)")
+
+fig2 = px.bar(
+    df,
+    y="Desviacion_%",
+    title="Desviación respecto al plan",
+    color="Desviacion_%",
+    color_continuous_scale="RdYlGn"
+)
+
+st.plotly_chart(fig2, use_container_width=True, key="g2")
+st.subheader("📉 Desviación de Producción (%)")
+
+fig2 = px.bar(
+    df,
+    y="Desviacion_%",
+    title="Desviación respecto al plan",
+    color="Desviacion_%",
+    color_continuous_scale="RdYlGn"
+)
+
+st.plotly_chart(fig2, use_container_width=True, key="g2")
+st.subheader("🚚 Tiempo de Espera (Zona crítica)")
+
+fig3 = px.line(
+    df,
+    y="Espera",
+    title="Tiempo de espera de camiones"
+)
+
+fig3.add_hline(
+    y=10,
+    line_dash="dash",
+    line_color="red",
+    annotation_text="Zona crítica"
+)
+
+st.plotly_chart(fig3, use_container_width=True, key="g3")
+st.subheader("⛏️ Eficiencia por Pala (%)")
+
+ef_pala = (df.groupby("Pala_activa")["Real"].sum() /
+           df.groupby("Pala_activa")["Plan"].sum() * 100).reset_index()
+
+fig4 = px.bar(
+    ef_pala,
+    x="Pala_activa",
+    y="Real",
+    title="Eficiencia de Producción por Pala",
+    color="Real",
+    color_continuous_scale="Viridis"
+)
+
+st.plotly_chart(fig4, use_container_width=True, key="g4")
+st.subheader("📈 Producción Acumulada")
+
+df["Real_acum"] = df["Real"].cumsum()
+df["Plan_acum"] = df["Plan"].cumsum()
+
+fig5 = px.line(
+    df,
+    y=["Real_acum","Plan_acum"],
+    title="Producción acumulada"
+)
+
+st.plotly_chart(fig5, use_container_width=True, key="g5")
 # --------------------------------
 # SIMULADOR SISTEMA MINA
 # --------------------------------
