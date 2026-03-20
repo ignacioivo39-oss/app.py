@@ -13,7 +13,7 @@ st.markdown("### Control • Predicción • Optimización • Decisión")
 archivo = st.file_uploader("Cargar datos operacionales", type=["xlsx"])
 
 # --------------------------------
-# FUNCIONES BASE
+# 🔧 FUNCIONES BASE
 # --------------------------------
 
 @st.cache_data
@@ -45,7 +45,7 @@ def diagnostico(ind):
     return problemas
 
 # --------------------------------
-# FUNCIONES NUEVAS PRO
+# 🧠 FUNCIONES NUEVAS PRO
 # --------------------------------
 
 def formatear_kpi(valor, unidad):
@@ -83,7 +83,7 @@ def motor_dispatch(df):
     return ranking, colas, prod
 
 # --------------------------------
-#  APP
+# 🚀 APP
 # --------------------------------
 
 if not archivo:
@@ -94,7 +94,7 @@ df = cargar(archivo)
 ind = indicadores(df)
 
 # --------------------------------
-# SALA DE CONTROL (MEJORADA)
+# 🖥️ SALA DE CONTROL (MEJORADA)
 # --------------------------------
 
 st.subheader("Sala de Control")
@@ -122,7 +122,7 @@ else:
     st.error(estado)
 
 # --------------------------------
-# DIAGNÓSTICO
+# 🔍 DIAGNÓSTICO
 # --------------------------------
 
 st.subheader("Diagnóstico")
@@ -145,7 +145,7 @@ if not problemas:
     st.success("✅ Operación balanceada")
 
 # --------------------------------
-# IMPACTO ECONÓMICO
+# 💰 IMPACTO ECONÓMICO
 # --------------------------------
 
 st.subheader("Impacto Económico")
@@ -174,7 +174,7 @@ col1.success(f"Enviar camiones a: {mejor}")
 col2.info(f"Próxima asignación: {segunda}")
 
 # --------------------------------
-# DECISIÓN POR EQUIPO
+# ⚙️ DECISIÓN POR EQUIPO
 # --------------------------------
 
 st.subheader("Decisión por Equipo")
@@ -185,7 +185,7 @@ for pala in ranking:
     col2.info(f"{pala} → Flujo recomendado")
 
 # --------------------------------
-# SIMULACIÓN DISPATCH
+# 🔄 SIMULACIÓN DISPATCH
 # --------------------------------
 
 st.subheader("Simulación Dispatch")
@@ -206,7 +206,7 @@ st.dataframe(pd.DataFrame({
 }))
 
 # --------------------------------
-# VISUAL
+# 📊 VISUAL
 # --------------------------------
 
 st.subheader("Balance Sistema")
@@ -220,19 +220,15 @@ st.plotly_chart(px.bar(balance, x="Proceso", y="Valor", color="Valor"),
                 use_container_width=True)
 
 # --------------------------------
-# ALERTAS INTELIGENTES (MEJORADAS)
+# 🚨 ALERTAS INTELIGENTES (MEJORADAS)
 # --------------------------------
 
 st.subheader("Alertas Inteligentes")
 
 hay_alertas = False
-
-prod = prod.to_dict()
 max_prod = max(prod.values())
 
-for p in colas.index:
-    colas[p]
-    prod[p]
+for p in colas:
 
     if colas[p] > 5:
         st.error(f"{p} saturada (alta congestión)")
