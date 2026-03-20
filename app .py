@@ -387,3 +387,75 @@ elif "Alerta" in estado_general:
 
 else:
     st.success("La operación se encuentra bajo control y en condiciones óptimas.")
+# --------------------------------
+# 📄 GENERAR REPORTE PDF
+# --------------------------------
+
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
+from reportlab.lib.styles import getSampleStyleSheet
+
+def generar_pdf(ind, problemas, perdida, precio, ranking, colas):
+
+    doc = SimpleDocTemplate("/mnt/data/reporte_PIOM.pdf")
+    styles = getSampleStyleSheet()
+
+    contenido = []
+
+    # TÍTULO
+    contenido.append(Paragraph("PIOM - REPORTE OPERACIONAL", styles["Title"]))
+    contenido.append(Spacer(1, 12))
+
+    # ESTADO
+    contenido.append(Paragraph("Estado General:", styles["Heading2"]))
+    contenido.append(Paragraph(estado(ind["prod"], ind["espera"], ind["mant"]), styles["Normal"]))
+    contenido.append(Spacer(1, 10))
+
+    # KPIs
+    contenido.append(Paragraph("Indicadores:", styles["Heading2"]))
+    contenido.append(Paragraph(f"Producción: {formatear(ind['prod'],'%')}", styles["Normal"]))
+    contenido.append(Paragraph(f"Perforación: {formatear(ind['perf'],'%')}", styles["Normal"]))
+    contenido.append(Paragraph(f"Espera: {formatear(ind['espera'],'min')}", styles["Normal"]))
+    contenido.append(Paragraph(f"Fallas: {formatear(ind['mant'],'eventos')}", styles["Normal"]))
+    contenido.append(Spacer(1, 10))
+
+    # PROBLEMAS
+    contenido.append(Paragraph("Problemas Detectados:", styles["Heading2"]))
+    if problemas:
+        for p in problemas:
+            contenido.append(Paragraph(f"- {p}", styles["Normal"]))
+    else:
+        contenido.append(Paragraph("Sin desviaciones críticas", styles["Normal"]))
+    contenido.append(Spacer(1, 10))
+
+    # IMPACTO
+    contenido.append(Paragraph("Impacto Económico:", styles["Heading2"]))
+    contenido.append(Paragraph(f"Pérdida: {formatear(perdida*precio,'$')}", styles["Normal"]))
+    contenido.append(Spacer(1, 10))
+
+    # RECOMENDACIÓN
+    contenido.append(Paragraph("Recomendación Operacional:", styles["Heading2"]))
+    if ranking:
+        contenido.append(Paragraph(f"Priorizar: {ranking[0]}", styles["Normal"]))
+    contenido.append(Spacer(1, 10))
+
+    # ALERTA
+    if ranking:
+        futura = colas[ranking[0]] + 2
+        if futura > 6:
+            contenido.append(Paragraph("Riesgo de congestión futura", styles["Normal"]))
+        else:
+            contenido.append(Paragraph("Operación estable proyectada", styles["Normal"]))
+
+    doc.build(contenido)
+
+    return "/mnt/data/reporte_PIOM.pdf"
+    if st.button("📄 Generar Reporte PDF"):
+
+    ruta = generar_pdf(ind, problemas, perdida, precio, ranking, colas)
+
+    with open(ruta, "rb") as f:
+        st.download_button(
+            "⬇️ Descargar Reporte",
+            f,
+            file_name="reporte_PIOM.pdf"
+        )
