@@ -74,7 +74,10 @@ def detectar_cuello_botella(indicadores):
 
 def detectar_equipos(df):
 
-    eficiencia_perf = df.groupby("Equipo_perforacion")[["Metros_real","Metros_plan"]].sum()
+    eficiencia_perf = (
+        df.groupby("Equipo_perforacion")[["Metros_real","Metros_plan"]]
+        .sum()
+    )
 
     eficiencia_perf["ef"] = (
         eficiencia_perf["Metros_real"] /
@@ -133,6 +136,10 @@ if archivo:
         st.subheader("Datos Operacionales del Turno")
         st.dataframe(df)
 
+        # -----------------------------
+        # INDICADORES
+        # -----------------------------
+
         indicadores = calcular_indicadores(df)
 
         col1, col2, col3 = st.columns(3)
@@ -146,14 +153,18 @@ if archivo:
         col3.metric("Espera Camiones (min)",
                     round(indicadores["Espera Camiones"],1))
 
-        # CUELLO BOTELLA
+        # -----------------------------
+        # CUELLO DE BOTELLA
+        # -----------------------------
 
         cuello = detectar_cuello_botella(indicadores)
 
         st.subheader("🚨 Cuello de Botella Detectado")
         st.error(cuello)
 
+        # -----------------------------
         # EQUIPOS CRÍTICOS
+        # -----------------------------
 
         peor_perf, peor_pala = detectar_equipos(df)
 
@@ -162,7 +173,9 @@ if archivo:
         st.write(f"Perforadora con menor rendimiento: **{peor_perf}**")
         st.write(f"Pala con menor rendimiento: **{peor_pala}**")
 
+        # -----------------------------
         # RECOMENDACIÓN
+        # -----------------------------
 
         recomendacion = generar_recomendacion(cuello)
 
@@ -176,23 +189,17 @@ if archivo:
         st.subheader("📊 Producción Real vs Plan")
 
         fig1 = px.line(df, y=["Plan","Real"], markers=True)
-
-        st.plotly_chart(fig1, use_container_width=True,
-                        key="grafico_produccion")
+        st.plotly_chart(fig1, use_container_width=True)
 
         st.subheader("⛏️ Metros Perforados")
 
         fig2 = px.line(df, y=["Metros_plan","Metros_real"], markers=True)
-
-        st.plotly_chart(fig2, use_container_width=True,
-                        key="grafico_perforacion")
+        st.plotly_chart(fig2, use_container_width=True)
 
         st.subheader("🚚 Espera de Camiones")
 
         fig3 = px.line(df, y="Espera", markers=True)
-
-        st.plotly_chart(fig3, use_container_width=True,
-                        key="grafico_espera")
+        st.plotly_chart(fig3, use_container_width=True)
 
         st.subheader("⚙️ Producción por Pala")
 
@@ -202,8 +209,7 @@ if archivo:
                       x="Pala_activa",
                       y="Real")
 
-        st.plotly_chart(fig4, use_container_width=True,
-                        key="grafico_pala")
+        st.plotly_chart(fig4, use_container_width=True)
 
 else:
 
@@ -284,5 +290,4 @@ fig = px.line(
     markers=True
 )
 
-st.plotly_chart(fig, use_container_width=True,
-                key="grafico_optimizacion")
+st.plotly_chart(fig, use_container_width=True)
