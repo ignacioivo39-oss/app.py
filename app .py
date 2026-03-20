@@ -11,7 +11,7 @@ from sklearn.linear_model import LinearRegression
 
 st.set_page_config(page_title="PIOM", layout="wide")
 
-st.title("⛏️ PIOM - Inteligencia Operacional Minera")
+st.title("PIOM - Inteligencia Operacional Minera")
 st.write("Sistema inteligente con aprendizaje automático")
 
 archivo = st.file_uploader("Subir Excel", type=["xlsx"])
@@ -102,12 +102,12 @@ if archivo:
 
     cuello = detectar_cuello(indicadores)
 
-    st.subheader("🚨 Cuello de Botella")
+    st.subheader("Cuello de Botella")
     st.error(cuello)
 
     # ---------------- IMPACTO ECONÓMICO ----------------
 
-    st.subheader("💰 Impacto Económico")
+    st.subheader("Impacto Económico")
 
     precio = st.number_input("Precio por tonelada ($)", value=100)
 
@@ -121,7 +121,7 @@ if archivo:
 
     # ---------------- GUARDAR HISTÓRICO ----------------
 
-    st.subheader("💾 Aprendizaje IA")
+    st.subheader("Aprendizaje")
 
     if st.button("Guardar turno para IA"):
 
@@ -139,7 +139,7 @@ if archivo:
 
     # ---------------- IA ----------------
 
-    st.subheader("🤖 IA Predictiva")
+    st.subheader("Prediccón")
 
     hist = pd.read_csv("historico.csv")
 
@@ -156,7 +156,7 @@ if archivo:
         st.metric("Predicción IA Producción", int(pred))
 
         # riesgo
-        st.subheader("⚠️ Riesgo IA")
+        st.subheader("Riesgo")
 
         error = abs(pred - df["real"].sum())
 
@@ -170,7 +170,7 @@ if archivo:
 
     # ---------------- GRÁFICOS ----------------
 
-    st.subheader("📊 Producción")
+    st.subheader("Producción")
 
     st.plotly_chart(
         px.line(df, y=["plan","real"], markers=True),
@@ -180,7 +180,7 @@ if archivo:
 
     df["desv"] = ((df["real"] - df["plan"]) / df["plan"].replace(0,1)) * 100
 
-    st.subheader("📉 Desviación")
+    st.subheader("Desviación")
 
     st.plotly_chart(
         px.bar(df, y="desv", color="desv"),
@@ -191,7 +191,7 @@ if archivo:
     # ---------------- RANKING ----------------
 
     if "pala_activa" in df.columns:
-        st.subheader("🏆 Ranking Palas")
+        st.subheader("Ranking Palas")
 
         rank = df.groupby("pala_activa")[["real","plan"]].sum()
         rank["Eficiencia"] = (rank["real"] / rank["plan"]) * 100
@@ -200,7 +200,7 @@ if archivo:
 
     # ---------------- REPORTE ----------------
 
-    st.subheader("📄 Reporte")
+    st.subheader("Reporte")
 
     rep = f"""
 Producción: {int(df["real"].sum())}
@@ -213,7 +213,7 @@ Cuello: {cuello}
 
 else:
     st.info("Sube un archivo Excel para comenzar")
-    st.subheader("🚚 IA Optimización de Flota")
+    st.subheader("Optimización de Flota")
 
 capacidad = st.number_input("Capacidad camión (ton)", 200)
 tiempo_ciclo = st.number_input("Tiempo ciclo (min)", 25)
@@ -235,7 +235,7 @@ prod_actual = (8 * capacidad * 12 * 60) / tiempo_ciclo
 
 st.write(f"Producción actual estimada: {int(prod_actual)} ton")
 st.write(f"Producción óptima estimada: {int(mejor_prod)} ton")
-st.subheader("🔧 IA Mantenimiento Predictivo")
+st.subheader("Mantenimiento Predictivo")
 
 if indicadores["Mant"] > 20:
     st.error("Alta tasa de fallas detectada")
@@ -247,7 +247,7 @@ if indicadores["Mant"] > 20:
 
 else:
     st.success("Nivel de mantenimiento controlado")
-    st.subheader("⛏️ IA Optimización Perforación")
+    st.subheader("Optimización Perforación")
 
 if "metros_real" in df.columns and "metros_plan" in df.columns:
 
@@ -263,7 +263,7 @@ if "metros_real" in df.columns and "metros_plan" in df.columns:
 
     else:
         st.success("Perforación eficiente")
-        st.subheader("🧠 Diagnóstico Inteligente")
+        st.subheader("Diagnóstico")
 
 if indicadores["Espera"] > 5:
     causa = "Transporte saturado"
@@ -279,7 +279,7 @@ st.warning(f"Problema raíz detectado: {causa}")
 # IA POR EQUIPO
 # --------------------------------
 
-st.subheader("🧠 IA por Equipo (Análisis Avanzado)")
+st.subheader("Equipo (Análisis Avanzado)")
 
 # ---- PALAS ----
 if "pala_activa" in df.columns:
@@ -323,7 +323,7 @@ if "camion" in df.columns:
 # SALA DE CONTROL MINA
 # --------------------------------
 
-st.subheader("🎛️ Sala de Control Operacional")
+st.subheader("Sala de Control Operacional")
 
 col1, col2, col3 = st.columns(3)
 
@@ -350,7 +350,7 @@ elif indicadores["Mant"] <= 20:
     col3.warning("Equipos 🟡")
 else:
     col3.error("Equipos 🔴")
-    st.subheader("📊 Mapa de Eficiencia Equipos")
+    st.subheader("Mapa de Eficiencia Equipos")
 
 if "pala_activa" in df.columns:
 
@@ -370,7 +370,7 @@ if "pala_activa" in df.columns:
 # MOTOR DE DESPACHO (CORE REAL)
 # --------------------------------
 
-st.subheader("🚚 Motor de Despacho Inteligente")
+st.subheader("Motor de Despacho")
 
 if "pala_activa" in df.columns and "camion" in df.columns:
 
@@ -384,7 +384,7 @@ if "pala_activa" in df.columns and "camion" in df.columns:
 
     st.write("Colas actuales:")
     st.dataframe(colas)
-    st.subheader("⚖️ Balance Flota - Palas")
+    st.subheader("Balance Flota - Palas")
 
 prod = df.groupby("pala_activa")["real"].sum().reset_index()
 
@@ -409,7 +409,7 @@ if "espera" in df.columns:
         st.error("Ciclo alto → baja eficiencia")
         from sklearn.ensemble import RandomForestRegressor
 
-st.subheader("🤖 IA por Pala")
+st.subheader(" Pala")
 
 if "pala_activa" in df.columns:
 
@@ -427,7 +427,7 @@ if "pala_activa" in df.columns:
     pred = modelo.predict(X)
 
     st.write("Predicción promedio:", int(pred.mean()))
-st.subheader("🚨 IA detección equipos deficientes")
+st.subheader("detección equipos deficientes")
 
 df["ratio"] = df["real"] / df["plan"]
 
@@ -436,7 +436,7 @@ bajo = df[df["ratio"] < 0.8]
 if not bajo.empty:
     st.error("Equipos bajo rendimiento detectados")
     st.dataframe(bajo)
-    st.subheader("🚚 IA recomendación flota")
+    st.subheader("recomendación flota")
 
 espera = df["espera"].mean()
 
