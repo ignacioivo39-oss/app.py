@@ -390,9 +390,6 @@ else:
 # --------------------------------
 # 📄 GENERAR REPORTE PDF
 # --------------------------------
-# --------------------------------
-# 📄 GENERAR REPORTE PDF (CORREGIDO)
-# --------------------------------
 
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
 from reportlab.lib.styles import getSampleStyleSheet
@@ -400,6 +397,143 @@ import tempfile
 
 def generar_pdf(ind, problemas, perdida, precio, ranking, colas):
 
+    import tempfile
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
+    from reportlab.lib.styles import getSampleStyleSheet
+
+    ruta = tempfile.NamedTemporaryFile(delete=False, suffix=".pdf").name
+
+    doc = SimpleDocTemplate(ruta)
+    styles = getSampleStyleSheet()
+
+    contenido = []
+
+    # --------------------------------
+    # 📌 TÍTULO
+    # --------------------------------
+    contenido.append(Paragraph("PIOM - REPORTE EJECUTIVO OPERACIONAL", styles["Title"]))
+    contenido.append(Spacer(1, 15))
+
+    # --------------------------------
+    # 🧠 RESUMEN EJECUTIVO
+    # --------------------------------
+    contenido.append(Paragraph("Resumen Ejecutivo", styles["Heading2"]))
+
+    estado_general = estado(ind["prod"], ind["espera"], ind["mant"])
+
+    if "Estable" in estado_general:
+        texto_estado = "La operación se encuentra en condición ESTABLE con desempeño dentro de parámetros esperados."
+    elif "Alerta" in estado_general:
+        texto_estado = "La operación presenta condiciones de ALERTA, con desviaciones que requieren seguimiento."
+    else:
+        texto_estado = "La operación se encuentra en estado CRÍTICO, requiriendo intervención inmediata."
+
+    contenido.append(Paragraph(texto_estado, styles["Normal"]))
+    contenido.append(Spacer(1, 10))
+
+    # --------------------------------
+    # 📊 KPIs OPERACIONALES
+    # --------------------------------
+    contenido.append(Paragraph("Indicadores Clave (KPIs)", styles["Heading2"]))
+
+    contenido.append(Paragraph(f"Producción: {formatear(ind['prod'],'%')} (cumplimiento del plan)", styles["Normal"]))
+    contenido.append(Paragraph(f"Perforación: {formatear(ind['perf'],'%')} (avance de desarrollo)", styles["Normal"]))
+    contenido.append(Paragraph(f"Tiempo de Espera: {formatear(ind['espera'],'min')} (eficiencia de transporte)", styles["Normal"]))
+    contenido.append(Paragraph(f"Fallas: {formatear(ind['mant'],'eventos')} (disponibilidad de equipos)", styles["Normal"]))
+    contenido.append(Spacer(1, 10))
+
+    # --------------------------------
+    # ⚠️ DIAGNÓSTICO
+    # --------------------------------
+    contenido.append(Paragraph("Diagnóstico Operacional", styles["Heading2"]))
+
+    if problemas:
+        for p in problemas:
+            contenido.append(Paragraph(f"- {p}", styles["Normal"]))
+    else:
+        contenido.append(Paragraph("Operación sin desviaciones relevantes.", styles["Normal"]))
+
+    contenido.append(Spacer(1, 10))
+
+    # --------------------------------
+    # 💰 IMPACTO ECONÓMICO
+    # --------------------------------
+    contenido.append(Paragraph("Impacto Económico", styles["Heading2"]))
+
+    impacto = perdida * precio
+
+    contenido.append(Paragraph(f"Pérdida estimada: {formatear(impacto,'$')}", styles["Normal"]))
+    contenido.append(Spacer(1, 10))
+
+    # --------------------------------
+    # 🚛 ANÁLISIS OPERACIONAL
+    # --------------------------------
+    contenido.append(Paragraph("Análisis de Operación", styles["Heading2"]))
+
+    if ranking:
+        contenido.append(Paragraph(f"Pala prioritaria: {ranking[0]}", styles["Normal"]))
+        if len(ranking) > 1:
+            contenido.append(Paragraph(f"Segunda prioridad: {ranking[1]}", styles["Normal"]))
+
+    # pala más congestionada
+    if len(colas) > 0:
+        critica = max(colas.index, key=lambda p: colas[p])
+        contenido.append(Paragraph(f"Punto crítico: {critica} presenta mayor congestión.", styles["Normal"]))
+
+    contenido.append(Spacer(1, 10))
+
+    # --------------------------------
+    # 🔮 PREDICCIÓN
+    # --------------------------------
+    contenido.append(Paragraph("Predicción Operacional", styles["Heading2"]))
+
+    if ranking:
+        futura = colas[ranking[0]] + 2
+
+        if futura > 6:
+            contenido.append(Paragraph("Se proyecta riesgo de congestión en el corto plazo.", styles["Normal"]))
+        else:
+            contenido.append(Paragraph("Se proyecta continuidad operacional estable.", styles["Normal"]))
+
+    contenido.append(Spacer(1, 10))
+
+    # --------------------------------
+    # 📌 RECOMENDACIONES
+    # --------------------------------
+    contenido.append(Paragraph("Recomendaciones", styles["Heading2"]))
+
+    if "Congestión flota" in problemas:
+        contenido.append(Paragraph("- Redistribuir flota de camiones.", styles["Normal"]))
+
+    if "Baja producción" in problemas:
+        contenido.append(Paragraph("- Revisar cumplimiento del plan de producción.", styles["Normal"]))
+
+    if "Baja perforación" in problemas:
+        contenido.append(Paragraph("- Optimizar perforación y continuidad operacional.", styles["Normal"]))
+
+    if "Fallas equipos" in problemas:
+        contenido.append(Paragraph("- Reforzar mantenimiento preventivo.", styles["Normal"]))
+
+    if not problemas:
+        contenido.append(Paragraph("- Mantener condiciones actuales de operación.", styles["Normal"]))
+
+    contenido.append(Spacer(1, 15))
+
+    # --------------------------------
+    # 📌 CONCLUSIÓN
+    # --------------------------------
+    contenido.append(Paragraph("Conclusión", styles["Heading2"]))
+
+    if "Crítico" in estado_general:
+        contenido.append(Paragraph("Se requiere intervención inmediata para evitar pérdidas mayores.", styles["Normal"]))
+    elif "Alerta" in estado_general:
+        contenido.append(Paragraph("Se recomienda monitoreo continuo y ajustes operacionales.", styles["Normal"]))
+    else:
+        contenido.append(Paragraph("Operación controlada y dentro de parámetros óptimos.", styles["Normal"]))
+
+    doc.build(contenido)
+
+    return ruta
     # ✅ ruta segura (SOLUCIÓN AL ERROR)
     ruta = tempfile.NamedTemporaryFile(delete=False, suffix=".pdf").name
 
@@ -456,7 +590,6 @@ def generar_pdf(ind, problemas, perdida, precio, ranking, colas):
     doc.build(contenido)
 
     return ruta
-
 
 # --------------------------------
 # 📥 BOTÓN DESCARGA PDF (CORREGIDO)
