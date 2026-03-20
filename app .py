@@ -292,3 +292,98 @@ for p in colas.index:
 
 if not hay:
     st.success("Sin alertas críticas")
+# --------------------------------
+# 📊 RESUMEN EJECUTIVO
+# --------------------------------
+
+st.subheader("📊 Resumen Ejecutivo")
+
+# estado general
+estado_general = estado(ind["prod"], ind["espera"], ind["mant"])
+
+# principales problemas
+problemas = diagnostico(ind)
+
+# pala crítica
+pala_critica = None
+if len(colas) > 0:
+    pala_critica = max(colas.index, key=lambda p: colas[p])
+
+# producción total
+produccion_total = df["Real"].sum()
+
+# --------------------------------
+# TEXTO EJECUTIVO
+# --------------------------------
+
+st.markdown("### 🧠 Estado General de la Operación")
+
+if "Estable" in estado_general:
+    st.success(f"La operación se encuentra en condición ESTABLE, con una producción de {formatear(ind['prod'],'%')} y tiempos de espera controlados ({formatear(ind['espera'],'min')}).")
+
+elif "Alerta" in estado_general:
+    st.warning(f"La operación presenta condiciones de ALERTA. Producción: {formatear(ind['prod'],'%')} y tiempos de espera de {formatear(ind['espera'],'min')}.")
+
+else:
+    st.error(f"La operación se encuentra en estado CRÍTICO. Producción bajo objetivo ({formatear(ind['prod'],'%')}).")
+
+# --------------------------------
+# PROBLEMAS CLAVE
+# --------------------------------
+
+st.markdown("### ⚠️ Principales Desviaciones")
+
+if problemas:
+    for p in problemas:
+        st.write(f"- {p}")
+else:
+    st.write("No se detectan desviaciones relevantes.")
+
+# --------------------------------
+# IMPACTO ECONÓMICO
+# --------------------------------
+
+st.markdown("### 💰 Impacto Económico")
+
+st.write(f"Pérdida estimada: **{formatear(perdida * precio, '$')}**")
+
+# --------------------------------
+# ANÁLISIS OPERACIONAL
+# --------------------------------
+
+st.markdown("### 🚛 Análisis Operacional")
+
+if pala_critica:
+    st.write(f"La mayor congestión se presenta en **{pala_critica}**, lo que puede impactar la continuidad operacional.")
+
+if ranking:
+    st.write(f"El sistema recomienda priorizar la operación en **{ranking[0]}** para mejorar la eficiencia global.")
+
+# --------------------------------
+# PROYECCIÓN
+# --------------------------------
+
+st.markdown("### 🔮 Proyección")
+
+if ranking:
+    futura = colas[ranking[0]] + 2
+
+    if futura > 6:
+        st.warning("Se proyecta riesgo de congestión en los próximos ciclos.")
+    else:
+        st.success("Se proyecta una operación estable en el corto plazo.")
+
+# --------------------------------
+# CONCLUSIÓN
+# --------------------------------
+
+st.markdown("### 📌 Conclusión")
+
+if "Crítico" in estado_general:
+    st.error("Se requiere intervención inmediata en la operación para recuperar niveles de producción.")
+
+elif "Alerta" in estado_general:
+    st.warning("Se recomienda ajuste en la asignación de flota y control de congestión.")
+
+else:
+    st.success("La operación se encuentra bajo control y en condiciones óptimas.")
