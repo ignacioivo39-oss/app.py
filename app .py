@@ -366,3 +366,45 @@ if "pala_activa" in df.columns:
     )
 
     st.plotly_chart(fig, use_container_width=True)
+# --------------------------------
+# MOTOR DE DESPACHO (CORE REAL)
+# --------------------------------
+
+st.subheader("🚚 Motor de Despacho Inteligente")
+
+if "pala_activa" in df.columns and "camion" in df.columns:
+
+    # calcular colas (espera promedio por pala)
+    colas = df.groupby("pala_activa")["espera"].mean().reset_index()
+
+    # seleccionar pala con menor espera
+    mejor_pala = colas.sort_values("espera").iloc[0]["pala_activa"]
+
+    st.success(f"Asignar próximos camiones a: {mejor_pala}")
+
+    st.write("Colas actuales:")
+    st.dataframe(colas)
+    st.subheader("⚖️ Balance Flota - Palas")
+
+prod = df.groupby("pala_activa")["real"].sum().reset_index()
+
+total = prod["real"].sum()
+
+prod["participacion_%"] = (prod["real"] / total) * 100
+
+st.dataframe(prod)
+
+# detectar desequilibrio
+if prod["participacion_%"].max() > 50:
+    st.warning("Desbalance detectado: una pala está sobrecargada")
+    st.subheader("⏱️ Control de Ciclo")
+
+if "espera" in df.columns:
+
+    ciclo = df["espera"].mean() + 20  # simplificado
+
+    st.metric("Tiempo ciclo estimado (min)", round(ciclo,1))
+
+    if ciclo > 30:
+        st.error("Ciclo alto → baja eficiencia")
+        
